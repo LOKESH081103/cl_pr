@@ -1,0 +1,375 @@
+╔══════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                      DHC AUTOMATION DATA FLOW                                            ║
+║                                    (SHOW THIS TO YOUR MAM)                                              ║
+╚══════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+
+═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+SECTION 1: FOUR INPUT FILES
+═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────┐  ┌──────────────────────┐  ┌──────────────────┐  ┌─────────────────────┐
+│   DCR.xlsb          │  │ To_be_Disabled.xlsb  │  │ Employee Master  │  │ Previous DHC        │
+│   (Collections)     │  │ (Compliance)         │  │ (Mobile List)    │  │ Working.xlsx        │
+├─────────────────────┤  ├──────────────────────┤  ├──────────────────┤  ├─────────────────────┤
+│                     │  │                      │  │                  │  │                     │
+│ Sheet1: 17,256      │  │ CIF Level:           │  │ Column:          │  │ Look Up Sheet:      │
+│ receipts            │  │ 93,669 CIFs          │  │ Mobile Numbers   │  │ 5,236 agreements    │
+│ ✓ Receipt No        │  │                      │  │ 19,048 mobiles   │  │ ✓ AGREEMENTNO       │
+│ ✓ AGREEMENTNO       │  │ Agreement Level:     │  │ ✓ Employee IDs   │  │ ✓ CIF_NO            │
+│ ✓ Amount            │  │ 15,839 agreements    │  │                  │  │ ✓ ZONE_NEW          │
+│ ✓ Date (TXN & ENTER)│  │ ✓ Cash restrictions  │  │ Used for:        │  │ ✓ SUB_REGION        │
+│ ✓ Mode (RTGS/Cash)  │  │                      │  │ Flagging agent   │  │ ✓ OPENING_SLAB     │
+│ ✓ Zone, Sub Region  │  │                      │  │ vs customer      │  │                     │
+│                     │  │                      │  │ receipts         │  │ Carries forward:    │
+│ Sheet2: 116,629     │  │                      │  │                  │  │ - Known CIFs (5.2K) │
+│ agreement master    │  │                      │  │                  │  │ - Zones             │
+│ ✓ AGREEMENTNO       │  │                      │  │                  │  │ - Sub Regions       │
+│ ✓ Opening DPD       │  │                      │  │                  │  │ - New flag (111.4K) │
+│ ✓ Slab              │  │                      │  │                  │  │                     │
+│ (116,629 rows)      │  │                      │  │                  │  │ ← This becomes      │
+│                     │  │                      │  │                  │  │   NEXT month's      │
+│                     │  │                      │  │                  │  │   "Previous Working"│
+└─────────────────────┘  └──────────────────────┘  └──────────────────┘  └─────────────────────┘
+          │                       │                         │                      │
+          │                       │                         │                      │
+          └───────────────────────┴─────────────────────────┴──────────────────────┘
+                                   │
+                                   ▼
+═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+SECTION 2: ETL TRANSFORMATION LAYER
+═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+                    ┌──────────────────────────────────────┐
+                    │     STEP 1: Load All Sources         │
+                    │  (Convert files → Python DataFrames) │
+                    └──────────────────────────────────────┘
+                                  │
+                                  ▼
+        ┌─────────────────────────────────────────────────────────┐
+        │        STEP 2: Build Lookup Master (lookup_master)      │
+        ├─────────────────────────────────────────────────────────┤
+        │ INPUT:  Prior_master (5.2K known) + DCR Sheet2 (116.6K) │
+        │ OUTPUT: 116,629 agreements × 7 columns                  │
+        │                                                          │
+        │ For each AGREEMENTNO:                                   │
+        │   ├─ Known (in prior) → Keep CIF/Zone/Sub Region        │
+        │   ├─ Unknown (new) → Mark CIF/Zone blank ⚠️             │
+        │   └─ Everyone → Refresh SLAB from this month            │
+        │                                                          │
+        │ FLAGS: NEEDS_CIF_MAPPING = TRUE for 111,393 new         │
+        │        (YOUR MAM must fill these in manually)           │
+        └─────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+        ┌──────────────────────────────────────────────────────────────┐
+        │   STEP 3: Build DCR Tab (dcr_tab) - Main Receipt Table      │
+        ├──────────────────────────────────────────────────────────────┤
+        │ START: DCR Sheet1 (17,256 receipts × 73 columns)            │
+        │                                                              │
+        │ MERGE 1: + lookup_master → Add CIF, Zone, Slab             │
+        │ MERGE 2: + agr_disable → Add "Ag Level cash mode" flag      │
+        │ MERGE 3: + cif_disable → Add "CIF LEVEL" flag              │
+        │                                                              │
+        │ CREATE 11 NEW COLUMNS:                                       │
+        │   [1] CIF ........................ from lookup_master        │
+        │   [2] Unique Mob number ......... COUNT receipts per mobile │
+        │   [3] Mob Num VS Emp Mob Num ... Employee set lookup        │
+        │   [4] Mode ....................... MODEOFPAYMENT mapped     │
+        │   [5] Status ..................... STATUS IN TAB mapped      │
+        │   [6] Receipt Source ............ RECEIPTSOURCE mapped      │
+        │   [7] Zone ....................... from lookup_master        │
+        │   [8] Sub Region ................ from lookup_master        │
+        │   [9] Slab ....................... from lookup_master        │
+        │   [10] Ag Level cash mode ....... from agr_disable           │
+        │   [11] CIF LEVEL ................ from cif_disable          │
+        │                                                              │
+        │ OUTPUT: dcr_tab (17,256 rows × 87 columns)                 │
+        │ USAGE: Build summaries 1, 3, 4, 5                          │
+        └──────────────────────────────────────────────────────────────┘
+                                  │
+                                  ▼
+        ┌───────────────────────────────────────────────────────────┐
+        │      STEP 4: Build RTGS Tab (rtgs_tab)                   │
+        ├───────────────────────────────────────────────────────────┤
+        │ FILTER dcr_tab: Keep only MODEOFPAYMENT = 'RTGS'         │
+        │                                                            │
+        │ ADD 3 COLUMNS:                                             │
+        │   [A] Ageing (days) = RECEIPT ENTER DATE - TXN DATE       │
+        │   [B] TAT Bucket:                                          │
+        │       ├─ < 4 days   → "< 4 Days"                          │
+        │       ├─ 4-10 days  → "5 - 10 Days"                       │
+        │       └─ ≥11 days   → "> 10 Days"                         │
+        │   [C] Receipt Type = RECEIPTTYPE mapped to standard       │
+        │                                                            │
+        │ OUTPUT: rtgs_tab (1,879 rows × 90 columns)                │
+        │ USAGE: Build summary 2 (RTGS Summary)                     │
+        └───────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+SECTION 3: AGGREGATIONS → 5 OUTPUT SUMMARIES
+═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+
+OUTPUT 1: Receipt made summary
+┌──────────────────────────────────────────────────────────────────┐
+│ SOURCE: dcr_tab (17,256 receipts)                                │
+│                                                                  │
+│ Structure: 2 Pivot Tables Side-by-Side                          │
+│                                                                  │
+│ LEFT TABLE:                                                      │
+│   Rows: RECEIPT STATUS (Updated, Pending)                       │
+│          × PAYMENT MODE (RTGS, Cash, Cheque, Online)            │
+│   Cols: Status (Cleared, Deposit, Pending) + Grand Total        │
+│   Values: COUNT receipts                                        │
+│                                                                  │
+│ RIGHT TABLE:                                                     │
+│   Rows: RECEIPT STATUS (Updated, Bounced/Cancelled)             │
+│          × PAYMENT MODE                                         │
+│   Cols: Status (Cleared, Deposit, Bounced, Cxn) + Total         │
+│   Values: COUNT receipts                                        │
+│                                                                  │
+│ EXAMPLE OUTPUT:                                                  │
+│   Receipt Status | Mode           | Cleared | Deposit | TOTAL   │
+│   ───────────────┼────────────────┼─────────┼─────────┼─────────│
+│   UPDATED        | RTGS           |  500    |   100   |   600   │
+│   UPDATED        | AIRTEL / CASH  | 5000    |   200   |  5200   │
+│   PENDING        | RTGS           |   50    |     0   |    50   │
+│   ───────────────┴────────────────┴─────────┴─────────┼─────────│
+│   GRAND TOTAL                                        | 16,000  │
+└──────────────────────────────────────────────────────────────────┘
+
+
+OUTPUT 2: RTGS Summary
+┌──────────────────────────────────────────────────────────────────┐
+│ SOURCE: rtgs_tab (1,879 RTGS receipts) + dcr_tab (online sources)│
+│                                                                  │
+│ LEFT BLOCK: Online Payment Sources (5-10 rows)                  │
+│   Source: BBPS, CCP - QR, CCP - Bitly, CHOLAONE DIRECT, etc.   │
+│   Value: COUNT of online receipts per source                    │
+│   Total: 11,942 online receipts this month                      │
+│                                                                  │
+│ MAIN MATRIX: Zone × Receipt Type × TAT (45-60 rows)             │
+│   9 Zones: EAST_1, EAST_2, NORTH_1, NORTH_2, NORTH_3, ...      │
+│   4 Types per zone: OD, Settlement, Part Payment, Other OD      │
+│   3 TAT Buckets: < 4 Days | 5-10 Days | > 10 Days               │
+│   2 Metrics per cell: Count | Value (Crores)                    │
+│                                                                  │
+│ EXAMPLE:                                                         │
+│   Zone/Type          | < 4 Days      | 5-10 Days     | > 10 Days│
+│                      | Cnt | Val(Cr) | Cnt | Val(Cr) | Cnt | ... │
+│   ──────────────────┼─────┼─────────┼─────┼─────────┼─────┼─────│
+│   NORTH_1           |  50 |  2.50   |  20 |  1.20   |  5  | 0.30│
+│   ─ OD              |  40 |  2.00   |  15 |  0.90   |  3  | 0.20│
+│   ─ Settlement      |  10 |  0.50   |   5 |  0.30   |  2  | 0.10│
+│   ──────────────────┴─────┴─────────┴─────┴─────────┴─────┴─────│
+│   GRAND TOTAL                                     1,879 | 95.50 │
+└──────────────────────────────────────────────────────────────────┘
+
+
+OUTPUT 3: Cash Mode Validat Summary (COMPLIANCE CHECK)
+┌──────────────────────────────────────────────────────────────────┐
+│ SOURCE: dcr_tab (filtered to VIOLATIONS only)                   │
+│                                                                  │
+│ FILTER: Mode = "AIRTEL / CASH" AND                              │
+│         (Ag Level cash mode IS NOT NULL OR CIF LEVEL IS NOT NULL)│
+│                                                                  │
+│ Result: 10-100 rows (violations) — customer on DISABLE LIST     │
+│         who STILL PAID via CASH ⚠️                               │
+│                                                                  │
+│ EXAMPLE:                                                         │
+│  CIF      | Zone  | Sub Reg        | Slab  | 2026-06-01 | TOTAL │
+│  ─────────┼───────┼────────────────┼───────┼────────────┼───────│
+│  8818578  | SOUTH | TELANGANA_2    | 60-89 |     —      | 297K  │
+│  12416558 | WEST  | MADHYA_PRADESH | 60-89 |     —      | 295K  │
+│  9612002  | WEST  | MUMBAI_3       | 30-59 | 94,337     | 259K  │
+│                                                                  │
+│ INTERPRETATION: CIF 9612002 made 3 payments totaling ₹259,000   │
+│ BUT is on disable list (30-59 days aging). Follow up needed! 🚨 │
+└──────────────────────────────────────────────────────────────────┘
+
+
+OUTPUT 4: Delay in RCPTING Summary
+┌──────────────────────────────────────────────────────────────────┐
+│ SOURCE: dcr_tab (FULL MONTH, all payment modes)                 │
+│                                                                  │
+│ SAME STRUCTURE AS RTGS SUMMARY (Zone × Type × TAT matrix)       │
+│ BUT includes CASH, CHECKS, ONLINE (not just RTGS)               │
+│                                                                  │
+│ PURPOSE: Identify slow receipting across ALL modes              │
+│   < 4 Days  → Good (fast processing)                            │
+│   5-10 Days → Acceptable                                        │
+│   > 10 Days → Problem (slow receipting, follow up)              │
+│                                                                  │
+│ EXAMPLE: WEST zone receipts aging > 10 days:                    │
+│   Zone/Type          | > 10 Days         |                       │
+│                      | Count | Value(Cr) |                       │
+│   ──────────────────┼───────┼───────────│                       │
+│   WEST_2            |  15   |   7.50    |                       │
+│   ─ OD              |  12   |   6.00    | ← Too many old OD      │
+│   ─ Settlement      |   3   |   1.50    |                       │
+│                                                                  │
+│ ACTION: Why are 12 OD receipts > 10 days old? Investigate.      │
+└──────────────────────────────────────────────────────────────────┘
+
+
+OUTPUT 5: RCPT CXN (Cancelled Receipts)
+┌──────────────────────────────────────────────────────────────────┐
+│ SOURCE: dcr_tab (filtered to Status = "Cxn")                   │
+│                                                                  │
+│ FLAT TABLE: One row per cancelled receipt (10-50 rows)          │
+│                                                                  │
+│ COLUMNS (11):                                                    │
+│   Receipt No, Date, Amount, Type, Mode, Zone, Agreement,        │
+│   Customer Name, Receipt Date, Status, REMARKS (blank)          │
+│                                                                  │
+│ EXAMPLE:                                                         │
+│  No   | Date      | Amount | Type       | Mode | Remarks        │
+│  ─────┼───────────┼────────┼────────────┼──────┼────────────────│
+│  1001 | 05/06/2026| 25,000 | Settlement | RTGS | [YOU FILL IN]  │
+│  1002 | 06/06/2026| 50,000 | OD         | CASH | [YOU FILL IN]  │
+│  1003 | 07/06/2026| 15,500 | Part Pay   | CHQ  | [YOU FILL IN]  │
+│                                                                  │
+│ ⚠️ WHY BLANK? Because cancellation reason is a JUDGMENT CALL    │
+│    Only YOUR MAM can determine:                                 │
+│    ├─ Duplicate payment                                         │
+│    ├─ Customer requested                                        │
+│    ├─ Bank error                                                │
+│    ├─ Data entry mistake                                        │
+│    └─ Other (specify)                                           │
+│                                                                  │
+│ This is NOT automated — it requires human knowledge.            │
+└──────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+SECTION 4: KEY MAPPINGS REFERENCE
+═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+PAYMENT MODE MAPPING (Column: Mode)
+├─ RTGS           → RTGS
+├─ AIRTEL         → AIRTEL / CASH
+├─ CASH           → AIRTEL / CASH
+├─ CHEQUE         → CHQ / DD
+├─ DD             → CHQ / DD
+└─ ONLINE_PAYMENT → ONLINE_PAYMENT
+
+
+RECEIPT STATUS MAPPING (Column: Status)
+├─ B  → Bounced
+├─ C  → Cleared
+├─ D  → Deposit
+├─ NA → Pending
+└─ X  → Cxn (Cancellation)
+
+
+RECEIPT TYPE MAPPING (Column: Receipt Type)
+├─ OD                 → OD (Interest/Charges)
+├─ FC                 → Settlement (Foreclosure)
+├─ Part Payment       → Part Payment
+├─ Settlement         → Settlement
+├─ Sale/EMD receipt   → Settlement
+└─ [Fallback to RECEIPT CAT if not found]
+   ├─ OD              → OD
+   ├─ OTHER OD        → OTHER OD
+   └─ -               → [blank]
+
+
+RECEIPT SOURCE MAPPING (Column: Receipt Source)
+├─ BBPS               → BBPS
+├─ CCP                → CCP - QR (normalized)
+├─ CCP - QR           → CCP - QR
+├─ CCP - Bitly        → CCP - Bitly
+├─ CCP - BITLY        → CCP - Bitly (normalized)
+├─ CHOLAONE DIRECT    → CHOLAONE DIRECT
+└─ [others preserved as-is]
+
+
+DISABLE LIST FLAGS
+├─ Ag Level cash mode: From "Agreement Level Disble" sheet
+│  Values: "CIF Level > 1.95 L", "Case Level > 1.95 L", etc.
+│  Meaning: This agreement NOT allowed to pay via cash ❌
+│
+└─ CIF LEVEL: From "CIF Level Disable" sheet
+   Values: "Not Required", "To be Disabled", "CIF Level > 1.95 L"
+   Meaning: This customer NOT allowed to pay via cash ❌
+
+
+═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+SECTION 5: THE MONTHLY WORKFLOW (How to Use This Every Month)
+═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+MONTH N+1 WORKFLOW:
+┌──────────────────────────────────────────────────────────────────┐
+│ 1. Gather 4 Input Files                                          │
+│    ├─ DCR.xlsb (this month's collections)                       │
+│    ├─ To_be_Disabled.xlsb (updated compliance lists)             │
+│    ├─ Employee Master.xlsx (unchanged usually)                   │
+│    └─ DHC_Working_Output_From_MONTH_N.xlsx (prev month output) ◀─│
+│       (← This becomes "Previous DHC Working" input)              │
+│                                                                  │
+│ 2. Upload to Streamlit App → Click "Process Files"              │
+│    └─ Runs full ETL pipeline (40 seconds)                       │
+│                                                                  │
+│ 3. Review Output                                                 │
+│    ├─ Preview all 5 summary sheets                              │
+│    ├─ Check "New Agreements" metric                             │
+│    └─ Download Excel workbook                                    │
+│                                                                  │
+│ 4. (IF) New Agreements Found                                     │
+│    ├─ Open "Look Up Master" tab in output                       │
+│    ├─ Find rows with blank CIF_NO                               │
+│    ├─ Manually lookup CIF from your LMS                         │
+│    ├─ Fill in CIF_NO, ZONE_NEW, SUB_REGION                      │
+│    └─ Save the file                                              │
+│                                                                  │
+│ 5. Next Month                                                    │
+│    └─ Use THIS MONTH's output as "Previous DHC Working" input   │
+│       (CIF mappings carried forward → fewer manual entries)      │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+SECTION 6: WHAT CHANGED FROM MANUAL FORMULAS
+═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+OLD WAY (Manual Excel Formulas):
+├─ VLOOKUP formulas pointing to external files ❌
+├─ Broken links when files moved → #REF! errors ❌
+├─ Copy-paste mistakes in formulas ❌
+├─ Formulas slow for 100K+ rows ❌
+├─ Hard to audit (formulas hidden in cells) ❌
+├─ Manual COUNTIFS/SUMIFS prone to typos ❌
+└─ Takes 20-30 minutes per month ❌
+
+
+NEW WAY (Automation):
+├─ Python code (visible, auditable) ✅
+├─ No external links — self-contained ✅
+├─ Deterministic logic (same inputs = same output) ✅
+├─ Fast (40 seconds for 100K+ rows) ✅
+├─ Easy to debug (error messages are clear) ✅
+├─ Exact aggregations (PIVOT_TABLE replicas) ✅
+└─ Takes 40 seconds per month ✅
+
+
+═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+💡 QUICK CHECKLIST FOR YOUR MAM:
+
+☐ 4 input files gathered & checked
+☐ Files have correct sheet names (Sheet1, Sheet2, etc.)
+☐ Employee Master has "Mobile Number" column
+☐ Previous DHC Working is last month's output (not older)
+☐ Streamlit app running (http://localhost:8501)
+☐ All 4 files uploaded
+☐ Process completed successfully
+☐ Reviewed all 5 output sheets
+☐ Checked "New Agreements" metric
+☐ If new agreements: Filled in CIF/Zone/Sub Region manually
+☐ Downloaded final workbook
+☐ Saved workbook to use as NEXT month's "Previous DHC Working" input
+
+═══════════════════════════════════════════════════════════════════════════════════════════════════════════
