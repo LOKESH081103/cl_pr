@@ -4,328 +4,279 @@ import streamlit as st
 import pandas as pd
 import base64
 from datetime import date
- 
-st.set_page_config(page_title="Daily Collections Update", layout="wide")
- 
-# ── EXACT column indices (0-based, arrow columns included) ────────────────────
-COL_ZONE       = 0
-COL_FR_FLOW    = 2;  COL_FR_EFF  = 3;  COL_FR_LMTD  = 6
-COL_129_FLOW   = 9;  COL_129_EFF = 11; COL_129_LMTD = 14
-COL_NORM_EFF   = 21; COL_NORM_LMTD = 24
-COL_3059_FLOW  = 29; COL_3059_EFF = 31; COL_3059_LMTD = 34
-COL_S3_FLOW    = 40; COL_S3_EFF   = 42; COL_S3_LMTD   = 45
- 
-SUBZONES = ['NORTH_1','NORTH_2','NORTH_3','EAST_1','EAST_2',
-            'SOUTH_1','SOUTH_2','WEST_1','WEST_2']
-DISPLAY  = {
-    'NORTH_1':'North 1','NORTH_2':'North 2','NORTH_3':'North 3',
-    'EAST_1':'East 1','EAST_2':'East 2',
-    'SOUTH_1':'South 1','SOUTH_2':'South 2',
-    'WEST_1':'West 1','WEST_2':'West 2',
+
+st.set_page_config(page_title="Daily Collections Update", layout="wide", page_icon="📊")
+
+# ── Global page styling ───────────────────────────────────────────────────────
+st.markdown("""
+<style>
+/* ── Base ── */
+[data-testid="stAppViewContainer"] {background: #f0f4f8;}
+[data-testid="stHeader"] {background: transparent;}
+
+/* ── App header banner ── */
+.app-banner {
+    background: linear-gradient(135deg, #1a365d 0%, #2b6cb0 100%);
+    border-radius: 14px;
+    padding: 28px 36px 22px;
+    color: #fff;
+    margin-bottom: 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
- 
+.app-banner .banner-title {font-size: 26px; font-weight: 800; letter-spacing: .6px; margin-bottom: 4px;}
+.app-banner .banner-sub   {font-size: 13px; opacity: .8; font-weight: 400;}
+.app-banner .banner-badge {
+    background: rgba(255,255,255,.18);
+    border: 1px solid rgba(255,255,255,.35);
+    border-radius: 10px;
+    padding: 8px 18px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .4px;
+}
+
+/* ── Upload card ── */
+.upload-card {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 22px 24px 18px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.07);
+    margin-bottom: 6px;
+}
+.upload-card .card-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #2b6cb0;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #ebf4ff;
+}
+
+/* ── Scope selector card ── */
+.scope-card {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 20px 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.07);
+    margin-bottom: 24px;
+}
+.scope-card .scope-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a365d;
+    margin-bottom: 16px;
+}
+
+/* ── Generate button ── */
+[data-testid="stButton"] > button {
+    background: linear-gradient(135deg, #1a365d, #2b6cb0) !important;
+    color: #fff !important;
+    font-weight: 700 !important;
+    font-size: 15px !important;
+    border: none !important;
+    border-radius: 10px !important;
+    padding: 12px 0 !important;
+    letter-spacing: .4px !important;
+    box-shadow: 0 4px 14px rgba(43,108,176,.35) !important;
+    transition: opacity .2s !important;
+}
+[data-testid="stButton"] > button:hover {opacity: .88 !important;}
+
+/* ── Report section headers ── */
+.rpt-section-head {
+    background: linear-gradient(90deg, #1a365d 0%, #2b6cb0 100%);
+    border-radius: 8px;
+    padding: 10px 18px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    margin: 20px 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.rpt-section-head .snum {
+    background: rgba(255,255,255,.25);
+    border-radius: 50%;
+    width: 24px; height: 24px;
+    display: inline-flex;
+    align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800;
+    flex-shrink: 0;
+}
+
+/* ── Report title ── */
+.rpt-title {
+    background: linear-gradient(135deg, #1a365d 0%, #2b6cb0 100%);
+    border-radius: 12px;
+    padding: 22px 28px;
+    color: #fff;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+.rpt-title .rt-main  {font-size: 19px; font-weight: 800; letter-spacing: .4px;}
+.rpt-title .rt-sub   {font-size: 12px; opacity: .8; margin-top: 3px;}
+.rpt-title .rt-badge {
+    background: rgba(255,255,255,.18);
+    border: 1px solid rgba(255,255,255,.3);
+    border-radius: 8px;
+    padding: 5px 14px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+/* ── Dataframe tweaks ── */
+[data-testid="stDataFrame"] {border-radius: 10px; overflow: hidden;}
+</style>
+""", unsafe_allow_html=True)
+
+# ── EXACT column indices (0-based, arrow columns included) ────────────────────
+COL_ZONE      = 0
+COL_FR_FLOW   = 2;  COL_FR_EFF  = 3;  COL_FR_LMTD  = 6
+COL_129_FLOW  = 9;  COL_129_EFF = 11; COL_129_LMTD = 14
+COL_NORM_EFF  = 21; COL_NORM_LMTD = 24
+COL_3059_FLOW = 29; COL_3059_EFF = 31; COL_3059_LMTD = 34
+COL_S3_FLOW   = 40; COL_S3_EFF  = 42; COL_S3_LMTD   = 45
+
+# ── Zone configuration: parent key → list of sub-region keys for bottom ranking
+ZONE_CONFIG = {
+    'PAN_INDIA': {
+        'label': 'PAN INDIA',
+        'subzones': ['NORTH_1','NORTH_2','NORTH_3','EAST_1','EAST_2',
+                     'SOUTH_1','SOUTH_2','WEST_1','WEST_2'],
+        'display': {
+            'NORTH_1':'North 1','NORTH_2':'North 2','NORTH_3':'North 3',
+            'EAST_1':'East 1','EAST_2':'East 2',
+            'SOUTH_1':'South 1','SOUTH_2':'South 2',
+            'WEST_1':'West 1','WEST_2':'West 2',
+        },
+    },
+    'NORTH_1': {
+        'label': 'North 1',
+        'subzones': ['DELHI','GURUGRAM','UTTAR_PRADESH'],
+        'display': {'DELHI':'Delhi','GURUGRAM':'Gurugram','UTTAR_PRADESH':'UP'},
+    },
+    'NORTH_2': {
+        'label': 'North 2',
+        'subzones': ['CHANDIGARH','HARYANA','HIMACHAL','PUNJAB_1','PUNJAB_2','UTTARAKHAND'],
+        'display': {
+            'CHANDIGARH':'Chandigarh','HARYANA':'Haryana','HIMACHAL':'Himachal',
+            'PUNJAB_1':'Punjab 1','PUNJAB_2':'Punjab 2','UTTARAKHAND':'Uttarakhand',
+        },
+    },
+    'NORTH_3': {
+        'label': 'North 3',
+        'subzones': ['RAJASTHAN_1','RAJASTHAN_2'],
+        'display': {'RAJASTHAN_1':'Rajasthan 1','RAJASTHAN_2':'Rajasthan 2'},
+    },
+    'EAST_1': {
+        'label': 'East 1',
+        'subzones': ['CHATTISGARH','ODISHA','WEST_BENGAL'],
+        'display': {'CHATTISGARH':'Chattisgarh','ODISHA':'Odisha','WEST_BENGAL':'West Bengal'},
+    },
+    'EAST_2': {
+        'label': 'East 2',
+        'subzones': ['BIHAR','JHARKHAND','NORTH_EAST'],
+        'display': {'BIHAR':'Bihar','JHARKHAND':'Jharkhand','NORTH_EAST':'North East'},
+    },
+    'SOUTH_1': {
+        'label': 'South 1',
+        'subzones': ['ANDHRA_PRADESH','KERALA','TAMIL_NADU'],
+        'display': {
+            'ANDHRA_PRADESH':'Andhra Pradesh','KERALA':'Kerala','TAMIL_NADU':'Tamil Nadu',
+        },
+    },
+    'SOUTH_2': {
+        'label': 'South 2',
+        'subzones': ['KARNATAKA','TELANGANA'],
+        'display': {'KARNATAKA':'Karnataka','TELANGANA':'Telangana'},
+    },
+    'WEST_1': {
+        'label': 'West 1',
+        'subzones': ['GUJARAT','MAHARASTRA'],
+        'display': {'GUJARAT':'Gujarat','MAHARASTRA':'Maharashtra'},
+    },
+    'WEST_2': {
+        'label': 'West 2',
+        'subzones': ['MADHYA_PRADESH','MUMBAI','GOA'],
+        'display': {'MADHYA_PRADESH':'Madhya Pradesh','MUMBAI':'Mumbai','GOA':'Goa'},
+    },
+}
+
+# All zone keys that need to be extracted from the dashboard
+ALL_ZONE_KEYS = [
+    'NORTH','NORTH_1','NORTH_2','NORTH_3',
+    'EAST','EAST_1','EAST_2',
+    'SOUTH','SOUTH_1','SOUTH_2',
+    'WEST','WEST_1','WEST_2',
+    'PAN_INDIA',
+    # Sub-regions for NORTH_1
+    'DELHI','GURUGRAM','UTTAR_PRADESH',
+    # Sub-regions for NORTH_2
+    'CHANDIGARH','HARYANA','HIMACHAL','PUNJAB_1','PUNJAB_2','UTTARAKHAND',
+    # Sub-regions for NORTH_3
+    'RAJASTHAN_1','RAJASTHAN_2',
+    # Sub-regions for EAST_1
+    'CHATTISGARH','ODISHA','WEST_BENGAL',
+    # Sub-regions for EAST_2
+    'BIHAR','JHARKHAND','NORTH_EAST',
+    # Sub-regions for SOUTH_1
+    'ANDHRA_PRADESH','KERALA','TAMIL_NADU',
+    # Sub-regions for SOUTH_2
+    'KARNATAKA','TELANGANA',
+    # Sub-regions for WEST_1
+    'GUJARAT','MAHARASTRA',
+    # Sub-regions for WEST_2
+    'MADHYA_PRADESH','MUMBAI','GOA',
+]
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def pct(val):
-    if val is None:
-        return None
-    if isinstance(val, float) and pd.isna(val):
-        return None
+    if val is None: return None
+    if isinstance(val, float) and pd.isna(val): return None
     s = str(val).strip()
-    if s in ('', 'nan', 'None', '-'):
-        return None
+    if s in ('', 'nan', 'None', '-'): return None
     has_pct_sign = s.endswith('%')
     s_clean = s.replace('%', '').replace(',', '')
-    try:
-        f = float(s_clean)
-    except ValueError:
-        return None
-    if has_pct_sign:
-        return f
+    try: f = float(s_clean)
+    except ValueError: return None
+    if has_pct_sign: return f
     else:
-        if abs(f) < 1.5:
-            return round(f * 100, 4)
+        if abs(f) < 1.5: return round(f * 100, 4)
         return f
 
 def num(val):
-    if val is None:
-        return None
-    if isinstance(val, float) and pd.isna(val):
-        return None
+    if val is None: return None
+    if isinstance(val, float) and pd.isna(val): return None
     s = str(val).strip().replace(',', '').replace('%', '')
-    if s in ('', 'nan', 'None', '-'):
-        return None
-    try:
-        return float(s)
-    except ValueError:
-        return None
- 
-def fmt_pct(v):
-    return f"{v:.2f}%" if v is not None else '---'
- 
-def fmt_num(v):
-    return f"{v:,.2f}" if v is not None else '---'
- 
-def create_report_image(today_m, yest_m, extra_t, extra_y, report_date):
-    pi_t = today_m.get('PAN_INDIA', {})
-    pi_y = yest_m.get('PAN_INDIA', {})
- 
-    # ── Image dimensions ──
-    width = 1600
-    height = 2800 
-    img = Image.new("RGB", (width, height), "#ffffff")
-    draw = ImageDraw.Draw(img)
- 
-    # ── Colors ──
-    COLOR_HEADER_BG = "#1a365d"
-    COLOR_HEADER_TEXT = "#ffffff"
-    COLOR_SECTION_BG = "#2b6cb0"
-    COLOR_SECTION_TEXT = "#ffffff"
-    COLOR_GRID_HEADER_BG = "#ebf4ff"
-    COLOR_GRID_HEADER_TEXT = "#2b6cb0"
-    COLOR_GRID_BORDER = "#e2e8f0"
-    COLOR_GRID_ROW_ALT = "#f7fafc"
-    COLOR_TEXT = "#1a202c"
-    COLOR_TEXT_SECONDARY = "#4a5568"
-    COLOR_SUBZONE = "#744210"
- 
-    # ── Fonts ──
-    try:
-        font_title = ImageFont.truetype("arial.ttf", 48)
-        font_subtitle = ImageFont.truetype("arial.ttf", 20)
-        font_section = ImageFont.truetype("arial.ttf", 24)
-        font_header = ImageFont.truetype("arial.ttf", 16)
-        font_body = ImageFont.truetype("arial.ttf", 14)
-        font_small = ImageFont.truetype("arial.ttf", 12)
-    except:
-        font_title = ImageFont.load_default()
-        font_subtitle = ImageFont.load_default()
-        font_section = ImageFont.load_default()
-        font_header = ImageFont.load_default()
-        font_body = ImageFont.load_default()
-        font_small = ImageFont.load_default()
- 
-    y_pos = 0
- 
-    # ════════════════════════════════════════════════════════════════════════════
-    # HEADER SECTION
-    # ════════════════════════════════════════════════════════════════════════════
-    draw.rectangle([0, 0, width, 140], fill=COLOR_HEADER_BG)
-    draw.text((50, 30), "DAILY COLLECTIONS UPDATE", fill=COLOR_HEADER_TEXT, font=font_title)
-    draw.text((50, 90), f"PAN INDIA | {report_date}", fill=COLOR_HEADER_TEXT, font=font_subtitle)
-    y_pos = 180
- 
-    # ════════════════════════════════════════════════════════════════════════════
-    # SECTION 1: Zone Efficiency %
-    # ════════════════════════════════════════════════════════════════════════════
-    draw.rectangle([30, y_pos, width - 30, y_pos + 50], fill=COLOR_SECTION_BG)
-    draw.text((50, y_pos + 12), "1. Zone Efficiency %", fill=COLOR_SECTION_TEXT, font=font_section)
-    y_pos += 70
- 
-    headers = ["Bucket", "Today", "Yesterday", "LMTD (MAY-26)", "AOD Flow (GA Crs.)"]
-    col_x = [50, 250, 430, 610, 810]
- 
-    draw.rectangle([30, y_pos, width - 30, y_pos + 50], fill=COLOR_GRID_HEADER_BG)
-    for i, header in enumerate(headers):
-        draw.text((col_x[i] + 10, y_pos + 15), header, fill=COLOR_GRID_HEADER_TEXT, font=font_header)
-    draw.line([30, y_pos + 50, width - 30, y_pos + 50], fill=COLOR_GRID_BORDER, width=2)
-    y_pos += 50
- 
-    buckets_s1 = [
-        ("Fresh", 'fresh_eff', 'fresh_lmtd', 'fresh_flow'),
-        ("1–29", '129_eff', '129_lmtd', '129_flow'),
-        ("1–29 Norm%", 'norm_eff', 'norm_lmtd', None),
-        ("30-59", '3059_eff', '3059_lmtd', '3059_flow'),
-        ("60-89 (S3 Concern)", 's3_eff', 's3_lmtd', 's3_flow'),
-    ]
- 
-    row_height = 45
-    for idx, (label, eff_k, lmtd_k, flow_k) in enumerate(buckets_s1):
-        if idx % 2 == 0:
-            draw.rectangle([30, y_pos, width - 30, y_pos + row_height], fill=COLOR_GRID_ROW_ALT)
-        for x in [250, 430, 610, 810, width - 30]:
-            draw.line([x, y_pos, x, y_pos + row_height], fill=COLOR_GRID_BORDER, width=1)
- 
-        t_eff_raw = pi_t.get(eff_k)
-        t_lmtd_raw = pi_t.get(lmtd_k)
-        
-        t_eff = fmt_pct(t_eff_raw)
-        y_eff = fmt_pct(pi_y.get(eff_k))
-        t_lmtd = fmt_pct(t_lmtd_raw)
-        t_flow = fmt_num(pi_t.get(flow_k)) if flow_k and pi_t.get(flow_k) is not None else "---"
- 
-        draw.text((col_x[0] + 10, y_pos + 12), label, fill=COLOR_TEXT, font=font_body)
-        draw.text((col_x[1] + 10, y_pos + 12), t_eff, fill=COLOR_TEXT, font=font_body)
-        draw.text((col_x[2] + 10, y_pos + 12), y_eff, fill=COLOR_TEXT_SECONDARY, font=font_body)
-        draw.text((col_x[3] + 10, y_pos + 12), t_lmtd, fill=COLOR_TEXT_SECONDARY, font=font_body)
-        draw.text((col_x[4] + 10, y_pos + 12), t_flow, fill=COLOR_SUBZONE, font=font_body)
-        
-        if t_eff_raw is not None and t_lmtd_raw is not None:
-            def get_w(txt):
-                try: return draw.textlength(txt, font=font_body)
-                except:
-                    try: return font_body.getlength(txt)
-                    except: return len(txt) * 8
-            w_eff = get_w(t_eff)
-            w_lmtd = get_w(t_lmtd)
-            
-            if t_eff_raw > t_lmtd_raw:
-                draw.text((col_x[1] + 10 + w_eff + 4, y_pos + 12), "↑", fill="#38a169", font=font_body)
-                draw.text((col_x[3] + 10 + w_lmtd + 4, y_pos + 12), "↓", fill="#e53e3e", font=font_body)
-            elif t_eff_raw < t_lmtd_raw:
-                draw.text((col_x[1] + 10 + w_eff + 4, y_pos + 12), "↓", fill="#e53e3e", font=font_body)
-                draw.text((col_x[3] + 10 + w_lmtd + 4, y_pos + 12), "↑", fill="#38a169", font=font_body)
- 
-        y_pos += row_height
- 
-    draw.line([30, y_pos, width - 30, y_pos], fill=COLOR_GRID_BORDER, width=2)
-    y_pos += 50
+    if s in ('', 'nan', 'None', '-'): return None
+    try: return float(s)
+    except ValueError: return None
 
-    # ════════════════════════════════════════════════════════════════════════════
-    # SECTION 2: Norm / RB / RF Metrics
-    # ════════════════════════════════════════════════════════════════════════════
-    draw.rectangle([30, y_pos, width - 30, y_pos + 50], fill=COLOR_SECTION_BG)
-    draw.text((50, y_pos + 12), "2. Norm / RB / RF Metrics", fill=COLOR_SECTION_TEXT, font=font_section)
-    y_pos += 70
- 
-    headers_extra = ["Bucket", "Today", "Yesterday", "LMTD", "Projection Crs."]
-    col_x_extra = [50, 250, 430, 610, 810]
- 
-    draw.rectangle([30, y_pos, width - 30, y_pos + 50], fill=COLOR_GRID_HEADER_BG)
-    for i, header in enumerate(headers_extra):
-        draw.text((col_x_extra[i] + 10, y_pos + 15), header, fill=COLOR_GRID_HEADER_TEXT, font=font_header)
-    draw.line([30, y_pos + 50, width - 30, y_pos + 50], fill=COLOR_GRID_BORDER, width=2)
-    y_pos += 50
+def fmt_pct(v): return f"{v:.2f}%" if v is not None else '---'
+def fmt_num(v): return f"{v:,.2f}" if v is not None else '---'
 
-    rows_s2 = [
-        ("1-29 Norm", fmt_num(extra_t.get('norm_129_today')), fmt_num(extra_y.get('norm_129_today')), fmt_num(extra_t.get('norm_129_lmtd')), fmt_num(extra_t.get('norm_129_proj'))),
-        ("Stage 2 Roll Back", fmt_num(extra_t.get('s2_rb_today')), fmt_num(extra_y.get('s2_rb_today')), fmt_num(extra_t.get('s2_rb_lmtd')), fmt_num(extra_t.get('s2_rb_proj'))),
-        ("Stage 3 Concern Flow", fmt_num(extra_t.get('s3_cf_today')), fmt_num(extra_y.get('s3_cf_today')), fmt_num(extra_t.get('s3_cf_lmtd')), fmt_num(extra_t.get('s3_cf_proj'))),
-        ("Stage 3 Roll Back", fmt_num(extra_t.get('s3_rb_today')), fmt_num(extra_y.get('s3_rb_today')), fmt_num(extra_t.get('s3_rb_lmtd')), fmt_num(extra_t.get('s3_rb_proj'))),
-    ]
+def safe_get(row_list, idx):
+    if row_list is None or idx >= len(row_list): return None
+    return row_list[idx]
 
-    for idx, (label, t_val, y_val, lmtd_val, proj_val) in enumerate(rows_s2):
-        if idx % 2 == 0:
-            draw.rectangle([30, y_pos, width - 30, y_pos + row_height], fill=COLOR_GRID_ROW_ALT)
-        for x in [250, 430, 610, 810, width - 30]:
-            draw.line([x, y_pos, x, y_pos + row_height], fill=COLOR_GRID_BORDER, width=1)
+def bottom2_eff(all_metrics, eff_key, subzones, display):
+    vals = [(display.get(sz, sz), all_metrics.get(sz, {}).get(eff_key))
+            for sz in subzones if all_metrics.get(sz, {}).get(eff_key) is not None]
+    return sorted(vals, key=lambda x: x[1])[:2]
 
-        draw.text((col_x_extra[0] + 10, y_pos + 12), label, fill=COLOR_TEXT, font=font_body)
-        draw.text((col_x_extra[1] + 10, y_pos + 12), t_val, fill=COLOR_TEXT, font=font_body)
-        draw.text((col_x_extra[2] + 10, y_pos + 12), y_val, fill=COLOR_TEXT_SECONDARY, font=font_body)
-        draw.text((col_x_extra[3] + 10, y_pos + 12), lmtd_val, fill=COLOR_TEXT_SECONDARY, font=font_body)
-        draw.text((col_x_extra[4] + 10, y_pos + 12), proj_val, fill=COLOR_SUBZONE, font=font_body)
+def bottom2_flow(all_metrics, flow_key, subzones, display):
+    vals = [(display.get(sz, sz), all_metrics.get(sz, {}).get(flow_key))
+            for sz in subzones if all_metrics.get(sz, {}).get(flow_key) is not None]
+    return sorted(vals, key=lambda x: x[1])[:2]
 
-        y_pos += row_height
-
-    draw.line([30, y_pos, width - 30, y_pos], fill=COLOR_GRID_BORDER, width=2)
-    y_pos += 20
-    draw.text((50, y_pos), "(a) * Agreement level S3 concern,  (b) Efficiency% excluding hold cases.", fill=COLOR_TEXT_SECONDARY, font=font_small)
-    y_pos += 50
- 
-    # ════════════════════════════════════════════════════════════════════════════
-    # SECTION 3: Bottom Sub-Zones | Efficiency %
-    # ════════════════════════════════════════════════════════════════════════════
-    draw.rectangle([30, y_pos, width - 30, y_pos + 50], fill=COLOR_SECTION_BG)
-    draw.text((50, y_pos + 12), "3. Bottom Sub-Zones | Efficiency %", fill=COLOR_SECTION_TEXT, font=font_section)
-    y_pos += 70
- 
-    headers3 = ["Bucket", "Bottom 1", "Eff %", "Bottom 2", "Eff %"]
-    col_x3 = [50, 250, 450, 600, 800]
- 
-    draw.rectangle([30, y_pos, width - 30, y_pos + 50], fill=COLOR_GRID_HEADER_BG)
-    for i, header in enumerate(headers3):
-        draw.text((col_x3[i] + 10, y_pos + 15), header, fill=COLOR_GRID_HEADER_TEXT, font=font_header)
-    draw.line([30, y_pos + 50, width - 30, y_pos + 50], fill=COLOR_GRID_BORDER, width=2)
-    y_pos += 50
- 
-    buckets_s3 = [
-        ("Fresh", 'fresh_eff'),
-        ("1-29 (S2 Concern)", '129_eff'),
-        ("1-29 Norm", 'norm_eff'),
-        ("30-59", '3059_eff'),
-        ("60-89 (S3 Concern)", 's3_eff'),
-    ]
- 
-    for idx, (label, eff_k) in enumerate(buckets_s3):
-        if idx % 2 == 0:
-            draw.rectangle([30, y_pos, width - 30, y_pos + row_height], fill=COLOR_GRID_ROW_ALT)
-        for x in [250, 450, 600, 800, width - 30]:
-            draw.line([x, y_pos, x, y_pos + row_height], fill=COLOR_GRID_BORDER, width=1)
- 
-        b = bottom2_eff(today_m, eff_k)
-        b1n = b[0][0] if len(b) > 0 else "---"
-        b1v = fmt_pct(b[0][1]) if len(b) > 0 else "---"
-        b2n = b[1][0] if len(b) > 1 else "---"
-        b2v = fmt_pct(b[1][1]) if len(b) > 1 else "---"
- 
-        draw.text((col_x3[0] + 10, y_pos + 12), label, fill=COLOR_TEXT, font=font_body)
-        draw.text((col_x3[1] + 10, y_pos + 12), b1n, fill=COLOR_SUBZONE, font=font_body)
-        draw.text((col_x3[2] + 10, y_pos + 12), b1v, fill=COLOR_TEXT, font=font_body)
-        draw.text((col_x3[3] + 10, y_pos + 12), b2n, fill=COLOR_SUBZONE, font=font_body)
-        draw.text((col_x3[4] + 10, y_pos + 12), b2v, fill=COLOR_TEXT_SECONDARY, font=font_body)
- 
-        y_pos += row_height
- 
-    draw.line([30, y_pos, width - 30, y_pos], fill=COLOR_GRID_BORDER, width=2)
-    y_pos += 50
- 
-    # ════════════════════════════════════════════════════════════════════════════
-    # SECTION 4: Bottom Sub-Zones | AOD Flow Value
-    # ════════════════════════════════════════════════════════════════════════════
-    draw.rectangle([30, y_pos, width - 30, y_pos + 50], fill=COLOR_SECTION_BG)
-    draw.text((50, y_pos + 12), "4. Bottom Sub-Zones | AOD Flow Value (Crs.)", fill=COLOR_SECTION_TEXT, font=font_section)
-    y_pos += 70
- 
-    headers4 = ["Bucket", "Bottom 1", "Flow Value", "Bottom 2", "Flow Value"]
-    col_x4 = [50, 250, 450, 600, 800]
- 
-    draw.rectangle([30, y_pos, width - 30, y_pos + 50], fill=COLOR_GRID_HEADER_BG)
-    for i, header in enumerate(headers4):
-        draw.text((col_x4[i] + 10, y_pos + 15), header, fill=COLOR_GRID_HEADER_TEXT, font=font_header)
-    draw.line([30, y_pos + 50, width - 30, y_pos + 50], fill=COLOR_GRID_BORDER, width=2)
-    y_pos += 50
- 
-    buckets_s4 = [
-        ("Fresh", 'fresh_flow'),
-        ("1-29 (S2 Concern)", '129_flow'),
-        ("30-59", '3059_flow'),
-        ("60-89 (S3 Concern)", 's3_flow'),
-    ]
- 
-    for idx, (label, flow_k) in enumerate(buckets_s4):
-        if idx % 2 == 0:
-            draw.rectangle([30, y_pos, width - 30, y_pos + row_height], fill=COLOR_GRID_ROW_ALT)
-        for x in [250, 450, 600, 800, width - 30]:
-            draw.line([x, y_pos, x, y_pos + row_height], fill=COLOR_GRID_BORDER, width=1)
- 
-        b = bottom2_flow(today_m, flow_k)
-        b1n = b[0][0] if len(b) > 0 else "---"
-        b1v = fmt_num(b[0][1]) if len(b) > 0 else "---"
-        b2n = b[1][0] if len(b) > 1 else "---"
-        b2v = fmt_num(b[1][1]) if len(b) > 1 else "---"
- 
-        draw.text((col_x4[0] + 10, y_pos + 12), label, fill=COLOR_TEXT, font=font_body)
-        draw.text((col_x4[1] + 10, y_pos + 12), b1n, fill=COLOR_SUBZONE, font=font_body)
-        draw.text((col_x4[2] + 10, y_pos + 12), b1v, fill=COLOR_TEXT, font=font_body)
-        draw.text((col_x4[3] + 10, y_pos + 12), b2n, fill=COLOR_SUBZONE, font=font_body)
-        draw.text((col_x4[4] + 10, y_pos + 12), b2v, fill=COLOR_TEXT_SECONDARY, font=font_body)
- 
-        y_pos += row_height
- 
-    draw.line([30, y_pos, width - 30, y_pos], fill=COLOR_GRID_BORDER, width=2)
-    y_pos += 80
- 
-    # ════════════════════════════════════════════════════════════════════════════
-    # FOOTER
-    # ════════════════════════════════════════════════════════════════════════════
-    footer_text = f"Generated on {date.today().strftime('%d %b %Y')} | Collections MIS Report | Confidential"
-    draw.text((50, y_pos), footer_text, fill=COLOR_TEXT_SECONDARY, font=font_small)
- 
-    buffer = io.BytesIO()
-    img.save(buffer, format="PNG")
-    buffer.seek(0)
-    return buffer
- 
 # ── File loading ──────────────────────────────────────────────────────────────
 def load_all_sheets(file):
     if file is None: return {}
@@ -334,7 +285,7 @@ def load_all_sheets(file):
     try:
         if name.endswith('.csv'):
             df = pd.read_csv(file, header=None, dtype=str)
-            return {"PROJ-OVERALL": df}
+            return {"Sheet1": df}
         elif name.endswith('.xlsb'):
             return pd.read_excel(file, sheet_name=None, engine="pyxlsb", header=None)
         else:
@@ -343,32 +294,68 @@ def load_all_sheets(file):
         st.error(f"Error loading {file.name}: {e}")
         return {}
 
-def get_stage2_rollback(file):
-    if file is None:
-        return None
-    try:
-        df = pd.read_excel(file, sheet_name="New Summary", header=None)
-        # 5th row (index 4), Column G (index 6)
-        raw_val = df.iloc[4, 6]
-        return num(raw_val)
-    except Exception:
-        return None
- 
+# ── Extraction Helpers ────────────────────────────────────────────────────────
+def extract_dashboard_metrics(df):
+    metrics = {'norm_129': None, 'norm_129_lmtd': None, 'norm_129_proj': None, 's3_rb': None}
+    if df is not None and not df.empty and len(df) > 16:
+        try:
+            row = df.iloc[16].tolist()
+            metrics['norm_129']      = num(safe_get(row, 15))
+            metrics['norm_129_proj'] = num(safe_get(row, 17))
+            metrics['norm_129_lmtd'] = num(safe_get(row, 23))
+            metrics['s3_rb']         = num(safe_get(row, 59))
+        except Exception as e:
+            st.warning(f"Error extracting dashboard Row 17 metrics: {e}")
+    return metrics
+
+def extract_s2_metrics(dfs_dict):
+    metrics = {'s2_rb': None, 's2_lmtd': None, 's2_proj': None}
+    if dfs_dict:
+        try:
+            df = list(dfs_dict.values())[0]
+            if not df.empty and len(df) > 4:
+                row = df.iloc[4].tolist()
+                metrics['s2_proj'] = num(safe_get(row, 4))
+                metrics['s2_rb']   = num(safe_get(row, 6))
+                metrics['s2_lmtd'] = num(safe_get(row, 8))
+        except Exception as e:
+            st.warning(f"Error extracting Stage 2 metrics: {e}")
+    return metrics
+
+def extract_s3_metrics(dfs_dict):
+    metrics = {'s3_concern_flow': None, 's3_concern_lmtd': None, 's3_concern_proj': None}
+    if dfs_dict:
+        try:
+            df_sum = dfs_dict.get('S3 Concern summary')
+            if df_sum is None:
+                for k in dfs_dict.keys():
+                    if 'concern summary' in k.lower():
+                        df_sum = dfs_dict[k]; break
+            if df_sum is not None and not df_sum.empty and len(df_sum) > 4:
+                row_sum = df_sum.iloc[4].tolist()
+                metrics['s3_concern_flow'] = num(safe_get(row_sum, 4))
+                metrics['s3_concern_lmtd'] = num(safe_get(row_sum, 8))
+            df_top = dfs_dict.get('Top Sheet')
+            if df_top is None:
+                for k in dfs_dict.keys():
+                    if 'top sheet' in k.lower():
+                        df_top = dfs_dict[k]; break
+            if df_top is not None and not df_top.empty and len(df_top) > 13:
+                row_top = df_top.iloc[13].tolist()
+                metrics['s3_concern_proj'] = num(safe_get(row_top, 2))
+        except Exception as e:
+            st.warning(f"Error extracting Stage 3 metrics: {e}")
+    return metrics
+
 def find_data_rows(df):
-    targets = {
-        'NORTH','NORTH_1','NORTH_2','NORTH_3',
-        'EAST','EAST_1','EAST_2',
-        'SOUTH','SOUTH_1','SOUTH_2',
-        'WEST','WEST_1','WEST_2',
-        'PAN_INDIA'
-    }
+    targets = set(k.upper() for k in ALL_ZONE_KEYS)
     result = []
     for _, row in df.iterrows():
         cell = str(row.iloc[0]).strip().upper().replace(' ', '_')
         if cell in targets:
             result.append(row.tolist())
     return result
- 
+
 def get_row(rows, name):
     norm = name.upper().replace(' ', '_')
     for r in rows:
@@ -376,22 +363,12 @@ def get_row(rows, name):
         if cell == norm:
             return r
     return None
- 
-def safe_get(row, idx):
-    if row is None or idx >= len(row):
-        return None
-    return row[idx]
- 
+
 def extract_all(rows):
-    all_zones = ['NORTH','NORTH_1','NORTH_2','NORTH_3',
-                 'EAST','EAST_1','EAST_2',
-                 'SOUTH','SOUTH_1','SOUTH_2',
-                 'WEST','WEST_1','WEST_2','PAN_INDIA']
     metrics = {}
-    for z in all_zones:
+    for z in ALL_ZONE_KEYS:
         r = get_row(rows, z)
-        if r is None:
-            continue
+        if r is None: continue
         metrics[z] = {
             'fresh_flow' : num(safe_get(r, COL_FR_FLOW)),
             'fresh_eff'  : pct(safe_get(r, COL_FR_EFF)),
@@ -409,550 +386,646 @@ def extract_all(rows):
             's3_lmtd'    : pct(safe_get(r, COL_S3_LMTD)),
         }
     return metrics
- 
-def bottom2_eff(today_m, eff_key):
-    vals = [(DISPLAY[sz], today_m.get(sz, {}).get(eff_key))
-            for sz in SUBZONES if today_m.get(sz, {}).get(eff_key) is not None]
-    return sorted(vals, key=lambda x: x[1])[:2]
- 
-def bottom2_flow(today_m, flow_key):
-    vals = [(DISPLAY[sz], today_m.get(sz, {}).get(flow_key))
-            for sz in SUBZONES if today_m.get(sz, {}).get(flow_key) is not None]
-    return sorted(vals, key=lambda x: x[1])[:2]
- 
-# ── HTML Report Generator ─────────────────────────────────────────────────────
-def build_html_report(today_m, yest_m, extra_t, extra_y, date_str):
-    pi_t = today_m.get('PAN_INDIA', {})
-    pi_y = yest_m.get('PAN_INDIA', {})
- 
-    # ── Section 1 data ────────────────────────────────────────────────────────
-    eff_buckets_s1 = [
-        ("Fresh",              'fresh_eff',  'fresh_lmtd',  'fresh_flow'),
-        ("1–29",               '129_eff',    '129_lmtd',    '129_flow'),
-        ("1–29 Norm%",         'norm_eff',   'norm_lmtd',   None),
-        ("30-59",              '3059_eff',   '3059_lmtd',   '3059_flow'),
-        ("60-89 (S3 CONCERN)", 's3_eff',     's3_lmtd',     's3_flow'),
-    ]
- 
-    def s1_rows():
-        html = ""
-        for label, eff_k, lmtd_k, flow_k in eff_buckets_s1:
-            t_eff  = pi_t.get(eff_k)
-            y_eff  = pi_y.get(eff_k)
-            t_lmtd = pi_t.get(lmtd_k)
-            t_flow = pi_t.get(flow_k) if flow_k else None
-            
-            t_eff_str = fmt_pct(t_eff)
-            t_lmtd_str = fmt_pct(t_lmtd)
-            
-            if t_eff is not None and t_lmtd is not None:
-                if t_eff > t_lmtd:
-                    t_eff_str += ' <span style="color: #38a169; font-weight: bold;">↑</span>'
-                    t_lmtd_str += ' <span style="color: #e53e3e; font-weight: bold;">↓</span>'
-                elif t_eff < t_lmtd:
-                    t_eff_str += ' <span style="color: #e53e3e; font-weight: bold;">↓</span>'
-                    t_lmtd_str += ' <span style="color: #38a169; font-weight: bold;">↑</span>'
 
-            html += f"""
-<tr>
-<td class="label">{label}</td>
-<td class="val today">{t_eff_str}</td>
-<td class="val">{fmt_pct(y_eff)}</td>
-<td class="val">{t_lmtd_str}</td>
-<td class="val flow">{fmt_num(t_flow) if t_flow is not None else '---'}</td>
-</tr>"""
-        return html
-    
-    # ── Section 2 data ────────────────────────────────────────────────────────
-    def s2_rows():
-        rows = [
-            ("1-29 Norm", fmt_num(extra_t.get('norm_129_today')), fmt_num(extra_y.get('norm_129_today')), fmt_num(extra_t.get('norm_129_lmtd')), fmt_num(extra_t.get('norm_129_proj'))),
-            ("Stage 2 Roll Back", fmt_num(extra_t.get('s2_rb_today')), fmt_num(extra_y.get('s2_rb_today')), fmt_num(extra_t.get('s2_rb_lmtd')), fmt_num(extra_t.get('s2_rb_proj'))),
-            ("Stage 3 Concern Flow", fmt_num(extra_t.get('s3_cf_today')), fmt_num(extra_y.get('s3_cf_today')), fmt_num(extra_t.get('s3_cf_lmtd')), fmt_num(extra_t.get('s3_cf_proj'))),
-            ("Stage 3 Roll Back", fmt_num(extra_t.get('s3_rb_today')), fmt_num(extra_y.get('s3_rb_today')), fmt_num(extra_t.get('s3_rb_lmtd')), fmt_num(extra_t.get('s3_rb_proj'))),
-        ]
-        html = ""
-        for label, t_val, y_val, lmtd_val, proj_val in rows:
-            html += f"""
-<tr>
-<td class="label">{label}</td>
-<td class="val today">{t_val}</td>
-<td class="val">{y_val}</td>
-<td class="val">{lmtd_val}</td>
-<td class="val flow">{proj_val}</td>
-</tr>"""
-        return html
- 
-    # ── Section 3 data ────────────────────────────────────────────────────────
-    eff_buckets_s3 = [
-        ("Fresh",               'fresh_eff'),
-        ("1-29 (S2 Concern)",   '129_eff'),
-        ("1-29 Norm",           'norm_eff'),
-        ("30-59",               '3059_eff'),
-        ("60-89 (S3 Concern)",  's3_eff'),
-    ]
- 
-    def s3_rows():
-        html = ""
-        for label, eff_k in eff_buckets_s3:
-            b = bottom2_eff(today_m, eff_k)
-            b1n = b[0][0] if len(b) > 0 else '---'
-            b1v = fmt_pct(b[0][1]) if len(b) > 0 else '---'
-            b2n = b[1][0] if len(b) > 1 else '---'
-            b2v = fmt_pct(b[1][1]) if len(b) > 1 else '---'
-            html += f"""
-<tr>
-<td class="label">{label}</td>
-<td class="val subzone">{b1n}</td>
-<td class="val today">{b1v}</td>
-<td class="val subzone">{b2n}</td>
-<td class="val">{b2v}</td>
-</tr>"""
-        return html
- 
-    # ── Section 4 data ────────────────────────────────────────────────────────
-    flow_buckets_s4 = [
-        ("Fresh",               'fresh_flow'),
-        ("1-29 (S2 Concern)",   '129_flow'),
-        ("30-59",               '3059_flow'),
-        ("60-89 (S3 Concern)",  's3_flow'),
-    ]
- 
-    def s4_rows():
-        html = ""
-        for label, flow_k in flow_buckets_s4:
-            b = bottom2_flow(today_m, flow_k)
-            b1n = b[0][0] if len(b) > 0 else '---'
-            b1v = fmt_num(b[0][1]) if len(b) > 0 else '---'
-            b2n = b[1][0] if len(b) > 1 else '---'
-            b2v = fmt_num(b[1][1]) if len(b) > 1 else '---'
-            html += f"""
-<tr>
-<td class="label">{label}</td>
-<td class="val subzone">{b1n}</td>
-<td class="val today">{b1v}</td>
-<td class="val subzone">{b2n}</td>
-<td class="val">{b2v}</td>
-</tr>"""
-        return html
- 
-    html = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<title>Daily Collections Update | {date_str}</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
- 
-  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
- 
-  body {{
-    font-family: 'Inter', sans-serif;
-    background: #f0f4f8;
-    color: #1a202c;
-    padding: 32px 24px;
-  }}
- 
-  .report-wrapper {{
-    max-width: 860px;
-    margin: 0 auto;
-  }}
- 
-  .report-header {{
-    background: linear-gradient(135deg, #1a365d 0%, #2b6cb0 100%);
-    border-radius: 16px 16px 0 0;
-    padding: 28px 36px 24px;
-    color: #fff;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-  }}
-  .report-header .title {{
-    font-size: 20px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-  }}
-  .report-header .subtitle {{
-    font-size: 13px;
-    opacity: 0.75;
-    margin-top: 4px;
-    font-weight: 400;
-  }}
-  .report-header .badge {{
-    background: rgba(255,255,255,0.18);
-    border: 1px solid rgba(255,255,255,0.3);
-    border-radius: 8px;
-    padding: 6px 14px;
-    font-size: 13px;
-    font-weight: 600;
-    white-space: nowrap;
-  }}
- 
-  .report-body {{
-    background: #ffffff;
-    border-radius: 0 0 16px 16px;
-    padding: 32px 36px 36px;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-  }}
- 
-  .section {{ margin-bottom: 36px; }}
-  .section:last-child {{ margin-bottom: 0; }}
-  
-  .section-footer-note {{
-      font-size: 11px;
-      color: #718096;
-      margin-top: 8px;
-      padding-left: 4px;
-  }}
- 
-  .section-header {{
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 14px;
-  }}
-  .section-number {{
-    background: #2b6cb0;
-    color: #fff;
-    font-size: 11px;
-    font-weight: 700;
-    width: 24px; height: 24px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-  }}
-  .section-title {{
-    font-size: 14px;
-    font-weight: 700;
-    color: #1a365d;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-  }}
- 
-  table {{
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    border-radius: 10px;
-    overflow: hidden;
-    border: 1px solid #e2e8f0;
-    font-size: 13px;
-  }}
-  thead tr {{ background: #ebf4ff; }}
-  thead th {{
-    padding: 10px 14px;
-    text-align: center;
-    font-size: 11px;
-    font-weight: 700;
-    color: #2b6cb0;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-bottom: 2px solid #bee3f8;
-  }}
-  thead th:first-child {{ text-align: left; }}
- 
-  tbody tr {{ transition: background 0.15s; }}
-  tbody tr:nth-child(even) {{ background: #f7fafc; }}
-  tbody tr:hover {{ background: #ebf8ff; }}
- 
-  td {{
-    padding: 10px 14px;
-    border-bottom: 1px solid #e2e8f0;
-  }}
-  tbody tr:last-child td {{ border-bottom: none; }}
- 
-  td.label {{ font-weight: 600; color: #2d3748; text-align: left; white-space: nowrap; }}
-  td.val {{ text-align: center; color: #4a5568; font-variant-numeric: tabular-nums; }}
-  td.today {{ font-weight: 700; color: #1a365d; }}
-  td.flow {{ color: #276749; font-weight: 600; }}
-  td.subzone {{ font-weight: 600; color: #744210; }}
- 
-  .report-footer {{
-    text-align: center;
-    margin-top: 20px;
-    font-size: 11px;
-    color: #a0aec0;
-    letter-spacing: 0.3px;
-  }}
-</style>
-</head>
-<body>
-<div class="report-wrapper">
-  <div class="report-header">
-<div>
-<div class="title">DAILY COLLECTIONS UPDATE</div>
-<div class="subtitle">PAN INDIA — Zone Efficiency Summary</div>
-</div>
-<div class="badge">📅 {date_str}</div>
-</div>
- 
-  <div class="report-body">
- 
-    <div class="section">
-<div class="section-header">
-<div class="section-number">1</div>
-<div class="section-title">Zone Efficiency %</div>
-</div>
-<table>
-<thead>
-<tr>
-<th>Bucket</th>
-<th>Today</th>
-<th>Yesterday</th>
-<th>MAY-26 LMTD</th>
-<th>AOD Flow Value (GA Crs.)</th>
-</tr>
-</thead>
-<tbody>
-          {s1_rows()}
-</tbody>
-</table>
-</div>
+# ── Streamlit render ──────────────────────────────────────────────────────────
+def render_report(today_m, yest_m, extra_t, extra_y, date_str, view_key):
+    cfg      = ZONE_CONFIG[view_key]
+    region_t = today_m.get(view_key, {})
+    region_y = yest_m.get(view_key, {})
+    subzones = cfg['subzones']
+    display  = cfg['display']
+    label    = cfg['label']
 
-    <div class="section">
-<div class="section-header">
-<div class="section-number">2</div>
-<div class="section-title">Norm / RB / RF Metrics</div>
-</div>
-<table>
-<thead>
-<tr>
-<th>Bucket</th>
-<th>Today</th>
-<th>Yesterday</th>
-<th>LMTD</th>
-<th>Projection Crs.</th>
-</tr>
-</thead>
-<tbody>
-          {s2_rows()}
-</tbody>
-</table>
-<div class="section-footer-note">(a) * Agreement level S3 concern,  (b) Efficiency% excluding hold cases.</div>
-</div>
- 
-    <div class="section">
-<div class="section-header">
-<div class="section-number">3</div>
-<div class="section-title">Bottom Sub-Zones | Efficiency %</div>
-</div>
-<table>
-<thead>
-<tr>
-<th>Bucket</th>
-<th>Bottom 1</th>
-<th>Eff %</th>
-<th>Bottom 2</th>
-<th>Eff %</th>
-</tr>
-</thead>
-<tbody>
-          {s3_rows()}
-</tbody>
-</table>
-</div>
- 
-    <div class="section">
-<div class="section-header">
-<div class="section-number">4</div>
-<div class="section-title">Bottom Sub-Zones | AOD Flow Value Crs.</div>
-</div>
-<table>
-<thead>
-<tr>
-<th>Bucket</th>
-<th>Bottom 1</th>
-<th>Flow Value</th>
-<th>Bottom 2</th>
-<th>Flow Value</th>
-</tr>
-</thead>
-<tbody>
-          {s4_rows()}
-</tbody>
-</table>
-</div>
- 
-  </div><div class="report-footer">
-    Generated on {date.today().strftime("%d %b %Y")} &nbsp;|&nbsp; Collections MIS Report &nbsp;|&nbsp; Confidential
-</div>
-</div>
-</body>
-</html>"""
-    return html
- 
-# ── Streamlit render (mirrors HTML tables) ────────────────────────────────────
-def render_report(today_m, yest_m, extra_t, extra_y, date_str):
-    pi_t = today_m.get('PAN_INDIA', {})
-    pi_y = yest_m.get('PAN_INDIA', {})
- 
-    st.markdown(f"## 📋 DAILY COLLECTIONS UPDATE | {date_str} &nbsp; PAN INDIA", unsafe_allow_html=True)
-    st.divider()
- 
-    # Section 1
-    st.markdown("### 1. Zone Efficiency %")
+    st.markdown(
+        f"""<div class="rpt-title">
+  <div>
+    <div class="rt-main">📋 DAILY COLLECTIONS UPDATE</div>
+    <div class="rt-sub">{label} — Zone / Region Efficiency Summary</div>
+  </div>
+  <div class="rt-badge">📅 {date_str}</div>
+</div>""",
+        unsafe_allow_html=True,
+    )
+
+    def section(num, title):
+        st.markdown(
+            f'<div class="rpt-section-head"><span class="snum">{num}</span>{title}</div>',
+            unsafe_allow_html=True,
+        )
+
+    # ── Section 1 ────────────────────────────────────────────────────────────
+    section(1, "Efficiency %")
     buckets = [
-        ("Fresh",               'fresh_eff', 'fresh_lmtd', 'fresh_flow'),
-        ("1–29",                '129_eff',   '129_lmtd',   '129_flow'),
-        ("1–29 Norm%",          'norm_eff',  'norm_lmtd',  None),
-        ("30-59",               '3059_eff',  '3059_lmtd',  '3059_flow'),
-        ("60-89 (S3 CONCERN)",  's3_eff',    's3_lmtd',    's3_flow'),
+        ("Fresh",              'fresh_eff', 'fresh_lmtd', 'fresh_flow'),
+        ("1–29",               '129_eff',   '129_lmtd',   '129_flow'),
+        ("1–29 Norm%",         'norm_eff',  'norm_lmtd',  None),
+        ("30-59",              '3059_eff',  '3059_lmtd',  '3059_flow'),
+        ("60-89 (S3 CONCERN)", 's3_eff',    's3_lmtd',    's3_flow'),
     ]
     rows1 = []
-    for label, eff_k, lmtd_k, flow_k in buckets:
-        t_eff_raw = pi_t.get(eff_k)
-        t_lmtd_raw = pi_t.get(lmtd_k)
-        
-        t_eff_str = fmt_pct(t_eff_raw)
+    for lbl, eff_k, lmtd_k, flow_k in buckets:
+        t_eff_raw  = region_t.get(eff_k)
+        t_lmtd_raw = region_t.get(lmtd_k)
+        t_eff_str  = fmt_pct(t_eff_raw)
         t_lmtd_str = fmt_pct(t_lmtd_raw)
-        
         if t_eff_raw is not None and t_lmtd_raw is not None:
             if t_eff_raw > t_lmtd_raw:
-                t_eff_str += " ↑"
-                t_lmtd_str += " ↓"
+                t_eff_str += " ↑"; t_lmtd_str += " ↓"
             elif t_eff_raw < t_lmtd_raw:
-                t_eff_str += " ↓"
-                t_lmtd_str += " ↑"
-
+                t_eff_str += " ↓"; t_lmtd_str += " ↑"
         rows1.append({
-            'Bucket':                   label,
+            'Bucket':                   lbl,
             'Today':                    t_eff_str,
-            'Yesterday':                fmt_pct(pi_y.get(eff_k)),
-            'MAY-26 LMTD':              t_lmtd_str,
-            'AOD Flow Value (GA Crs.)': fmt_num(pi_t.get(flow_k)) if flow_k and pi_t.get(flow_k) is not None else '---',
+            'Yesterday':                fmt_pct(region_y.get(eff_k)),
+            'LMTD':                     t_lmtd_str,
+            'AOD Flow Value (GA Crs.)': fmt_num(region_t.get(flow_k)) if flow_k and region_t.get(flow_k) is not None else '---',
         })
     st.dataframe(pd.DataFrame(rows1).set_index('Bucket'), use_container_width=True)
 
-    # Section 2
-    st.markdown("### 2. Norm / RB / RF Metrics")
+    # ── Section 2 ────────────────────────────────────────────────────────────
+    section(2, "Norm / RB / RF Metrics")
     rows2 = [
-        {"Bucket": "1-29 Norm", "Today": fmt_num(extra_t.get('norm_129_today')), "Yesterday": fmt_num(extra_y.get('norm_129_today')), "LMTD": fmt_num(extra_t.get('norm_129_lmtd')), "Projection Crs.": fmt_num(extra_t.get('norm_129_proj'))},
-        {"Bucket": "Stage 2 Roll Back", "Today": fmt_num(extra_t.get('s2_rb_today')), "Yesterday": fmt_num(extra_y.get('s2_rb_today')), "LMTD": fmt_num(extra_t.get('s2_rb_lmtd')), "Projection Crs.": fmt_num(extra_t.get('s2_rb_proj'))},
-        {"Bucket": "Stage 3 Concern Flow", "Today": fmt_num(extra_t.get('s3_cf_today')), "Yesterday": fmt_num(extra_y.get('s3_cf_today')), "LMTD": fmt_num(extra_t.get('s3_cf_lmtd')), "Projection Crs.": fmt_num(extra_t.get('s3_cf_proj'))},
-        {"Bucket": "Stage 3 Roll Back", "Today": fmt_num(extra_t.get('s3_rb_today')), "Yesterday": fmt_num(extra_y.get('s3_rb_today')), "LMTD": fmt_num(extra_t.get('s3_rb_lmtd')), "Projection Crs.": fmt_num(extra_t.get('s3_rb_proj'))},
+        {"Bucket": "1-29 Norm",
+         "Today": fmt_num(extra_t.get('norm_129')),       "Yesterday": fmt_num(extra_y.get('norm_129')),
+         "LMTD":  fmt_num(extra_t.get('norm_129_lmtd')),  "Projection Crs.": fmt_num(extra_t.get('norm_129_proj'))},
+        {"Bucket": "Stage 2 Roll Back",
+         "Today": fmt_num(extra_t.get('s2_rb')),          "Yesterday": fmt_num(extra_y.get('s2_rb')),
+         "LMTD":  fmt_num(extra_t.get('s2_lmtd')),        "Projection Crs.": fmt_num(extra_t.get('s2_proj'))},
+        {"Bucket": "Stage 3 Concern Flow",
+         "Today": fmt_num(extra_t.get('s3_concern_flow')), "Yesterday": fmt_num(extra_y.get('s3_concern_flow')),
+         "LMTD":  fmt_num(extra_t.get('s3_concern_lmtd')), "Projection Crs.": fmt_num(extra_t.get('s3_concern_proj'))},
+        {"Bucket": "Stage 3 Roll Back",
+         "Today": fmt_num(extra_t.get('s3_rb')),          "Yesterday": fmt_num(extra_y.get('s3_rb')),
+         "LMTD":  "---",                                   "Projection Crs.": "---"},
     ]
     st.dataframe(pd.DataFrame(rows2).set_index('Bucket'), use_container_width=True)
     st.caption("(a) * Agreement level S3 concern,  (b) Efficiency% excluding hold cases.")
- 
-    # Section 3
-    st.markdown("### 3. Bottom Sub-Zones | Efficiency %")
+
+    # ── Section 3 ────────────────────────────────────────────────────────────
+    section(3, "Bottom Sub-Regions | Efficiency %")
     eff_b2 = [
-        ("Fresh",               'fresh_eff'),
-        ("1-29 (S2 Concern)",   '129_eff'),
-        ("1-29 Norm",           'norm_eff'),
-        ("30-59",               '3059_eff'),
-        ("60-89 (S3 Concern)",  's3_eff'),
+        ("Fresh",              'fresh_eff'),
+        ("1-29 (S2 Concern)",  '129_eff'),
+        ("1-29 Norm",          'norm_eff'),
+        ("30-59",              '3059_eff'),
+        ("60-89 (S3 Concern)", 's3_eff'),
     ]
     rows3 = []
-    for label, eff_k in eff_b2:
-        b = bottom2_eff(today_m, eff_k)
+    for lbl, eff_k in eff_b2:
+        b = bottom2_eff(today_m, eff_k, subzones, display)
         rows3.append({
-            'Bucket':   label,
+            'Bucket':   lbl,
             'Bottom 1': b[0][0] if len(b) > 0 else '---',
             'Eff %':    fmt_pct(b[0][1]) if len(b) > 0 else '---',
             'Bottom 2': b[1][0] if len(b) > 1 else '---',
             'Eff % ':   fmt_pct(b[1][1]) if len(b) > 1 else '---',
         })
     st.dataframe(pd.DataFrame(rows3).set_index('Bucket'), use_container_width=True)
- 
-    # Section 4
-    st.markdown("### 4. Bottom Sub-Zones | AOD Flow Value Crs.")
+
+    # ── Section 4 ────────────────────────────────────────────────────────────
+    section(4, "Bottom Sub-Regions | AOD Flow Value Crs.")
     flow_b2 = [
-        ("Fresh",               'fresh_flow'),
-        ("1-29 (S2 Concern)",   '129_flow'),
-        ("30-59",               '3059_flow'),
-        ("60-89 (S3 Concern)",  's3_flow'),
+        ("Fresh",              'fresh_flow'),
+        ("1-29 (S2 Concern)",  '129_flow'),
+        ("30-59",              '3059_flow'),
+        ("60-89 (S3 Concern)", 's3_flow'),
     ]
     rows4 = []
-    for label, flow_k in flow_b2:
-        b = bottom2_flow(today_m, flow_k)
+    for lbl, flow_k in flow_b2:
+        b = bottom2_flow(today_m, flow_k, subzones, display)
         rows4.append({
-            'Bucket':       label,
-            'Bottom 1':     b[0][0] if len(b) > 0 else '---',
-            'Flow Value':   fmt_num(b[0][1]) if len(b) > 0 else '---',
-            'Bottom 2':     b[1][0] if len(b) > 1 else '---',
-            'Flow Value ':  fmt_num(b[1][1]) if len(b) > 1 else '---',
+            'Bucket':      lbl,
+            'Bottom 1':    b[0][0] if len(b) > 0 else '---',
+            'Flow Value':  fmt_num(b[0][1]) if len(b) > 0 else '---',
+            'Bottom 2':    b[1][0] if len(b) > 1 else '---',
+            'Flow Value ': fmt_num(b[1][1]) if len(b) > 1 else '---',
         })
     st.dataframe(pd.DataFrame(rows4).set_index('Bucket'), use_container_width=True)
- 
-# ── Download button ───────────────────────────────────────────────────────────
-def download_button(html_str, filename):
-    b64 = base64.b64encode(html_str.encode()).decode()
-    href = f'data:text/html;base64,{b64}'
- 
+
+
+# ── PNG Image Generator ───────────────────────────────────────────────────────
+def create_report_image(today_m, yest_m, extra_t, extra_y, report_date, view_key):
+    cfg      = ZONE_CONFIG[view_key]
+    region_t = today_m.get(view_key, {})
+    region_y = yest_m.get(view_key, {})
+    subzones = cfg['subzones']
+    display  = cfg['display']
+    label    = cfg['label']
+
+    width = 1600; height = 2800
+    img  = Image.new("RGB", (width, height), "#ffffff")
+    draw = ImageDraw.Draw(img)
+
+    COLOR_HEADER_BG      = "#1a365d"
+    COLOR_HEADER_TEXT    = "#ffffff"
+    COLOR_SECTION_BG     = "#2b6cb0"
+    COLOR_SECTION_TEXT   = "#ffffff"
+    COLOR_GRID_HEADER_BG = "#ebf4ff"
+    COLOR_GRID_HEADER_T  = "#2b6cb0"
+    COLOR_GRID_BORDER    = "#e2e8f0"
+    COLOR_GRID_ROW_ALT   = "#f7fafc"
+    COLOR_TEXT           = "#1a202c"
+    COLOR_TEXT_SEC       = "#4a5568"
+    COLOR_SUBZONE        = "#744210"
+
+    try:
+        font_title    = ImageFont.truetype("arial.ttf", 48)
+        font_subtitle = ImageFont.truetype("arial.ttf", 20)
+        font_section  = ImageFont.truetype("arial.ttf", 24)
+        font_header   = ImageFont.truetype("arial.ttf", 16)
+        font_body     = ImageFont.truetype("arial.ttf", 14)
+        font_small    = ImageFont.truetype("arial.ttf", 12)
+    except:
+        font_title = font_subtitle = font_section = font_header = font_body = font_small = ImageFont.load_default()
+
+    y = 0
+    # Header
+    draw.rectangle([0, 0, width, 140], fill=COLOR_HEADER_BG)
+    draw.text((50, 30), "DAILY COLLECTIONS UPDATE", fill=COLOR_HEADER_TEXT, font=font_title)
+    draw.text((50, 90), f"{label}  |  {report_date}", fill=COLOR_HEADER_TEXT, font=font_subtitle)
+    y = 180
+
+    row_height = 45
+
+    def draw_section_header(title):
+        nonlocal y
+        draw.rectangle([30, y, width - 30, y + 50], fill=COLOR_SECTION_BG)
+        draw.text((50, y + 12), title, fill=COLOR_SECTION_TEXT, font=font_section)
+        y += 70
+
+    def draw_table_header(headers, col_x):
+        nonlocal y
+        draw.rectangle([30, y, width - 30, y + 50], fill=COLOR_GRID_HEADER_BG)
+        for i, h in enumerate(headers):
+            draw.text((col_x[i] + 10, y + 15), h, fill=COLOR_GRID_HEADER_T, font=font_header)
+        draw.line([30, y + 50, width - 30, y + 50], fill=COLOR_GRID_BORDER, width=2)
+        y += 50
+
+    def draw_row(cells, col_x, colors, idx):
+        nonlocal y
+        if idx % 2 == 0:
+            draw.rectangle([30, y, width - 30, y + row_height], fill=COLOR_GRID_ROW_ALT)
+        for x in col_x[1:] + [width - 30]:
+            draw.line([x, y, x, y + row_height], fill=COLOR_GRID_BORDER, width=1)
+        for i, (text, color) in enumerate(zip(cells, colors)):
+            draw.text((col_x[i] + 10, y + 12), str(text), fill=color, font=font_body)
+        y += row_height
+
+    def get_w(txt):
+        try: return draw.textlength(txt, font=font_body)
+        except:
+            try: return font_body.getlength(txt)
+            except: return len(txt) * 8
+
+    # ── Section 1 ─────────────────────────────────────────────────────────────
+    draw_section_header("1. Efficiency %")
+    col_x1 = [50, 250, 430, 610, 810]
+    draw_table_header(["Bucket", "Today", "Yesterday", "LMTD", "AOD Flow (GA Crs.)"], col_x1)
+    buckets_s1 = [
+        ("Fresh",              'fresh_eff', 'fresh_lmtd', 'fresh_flow'),
+        ("1-29",               '129_eff',   '129_lmtd',   '129_flow'),
+        ("1-29 Norm%",         'norm_eff',  'norm_lmtd',  None),
+        ("30-59",              '3059_eff',  '3059_lmtd',  '3059_flow'),
+        ("60-89 (S3 Concern)", 's3_eff',    's3_lmtd',    's3_flow'),
+    ]
+    for idx, (lbl, eff_k, lmtd_k, flow_k) in enumerate(buckets_s1):
+        t_eff_raw  = region_t.get(eff_k)
+        t_lmtd_raw = region_t.get(lmtd_k)
+        t_eff_s    = fmt_pct(t_eff_raw)
+        t_lmtd_s   = fmt_pct(t_lmtd_raw)
+        t_flow_s   = fmt_num(region_t.get(flow_k)) if flow_k and region_t.get(flow_k) is not None else "---"
+        draw_row([lbl, t_eff_s, fmt_pct(region_y.get(eff_k)), t_lmtd_s, t_flow_s],
+                 col_x1, [COLOR_TEXT, COLOR_TEXT, COLOR_TEXT_SEC, COLOR_TEXT_SEC, COLOR_SUBZONE], idx)
+        if t_eff_raw is not None and t_lmtd_raw is not None:
+            arrow_y = y - row_height + 12
+            w_eff   = get_w(t_eff_s)
+            w_lmtd  = get_w(t_lmtd_s)
+            if t_eff_raw > t_lmtd_raw:
+                draw.text((col_x1[1] + 10 + w_eff + 4, arrow_y), "↑", fill="#38a169", font=font_body)
+                draw.text((col_x1[3] + 10 + w_lmtd + 4, arrow_y), "↓", fill="#e53e3e", font=font_body)
+            elif t_eff_raw < t_lmtd_raw:
+                draw.text((col_x1[1] + 10 + w_eff + 4, arrow_y), "↓", fill="#e53e3e", font=font_body)
+                draw.text((col_x1[3] + 10 + w_lmtd + 4, arrow_y), "↑", fill="#38a169", font=font_body)
+    draw.line([30, y, width - 30, y], fill=COLOR_GRID_BORDER, width=2)
+    y += 50
+
+    # ── Section 2 ─────────────────────────────────────────────────────────────
+    draw_section_header("2. Norm / RB / RF Metrics")
+    col_x2 = [50, 250, 430, 610, 810]
+    draw_table_header(["Bucket", "Today", "Yesterday", "LMTD", "Projection Crs."], col_x2)
+    rows_s2 = [
+        ("1-29 Norm",           fmt_num(extra_t.get('norm_129')),        fmt_num(extra_y.get('norm_129')),
+                                fmt_num(extra_t.get('norm_129_lmtd')),   fmt_num(extra_t.get('norm_129_proj'))),
+        ("Stage 2 Roll Back",   fmt_num(extra_t.get('s2_rb')),           fmt_num(extra_y.get('s2_rb')),
+                                fmt_num(extra_t.get('s2_lmtd')),         fmt_num(extra_t.get('s2_proj'))),
+        ("Stage 3 Concern Flow",fmt_num(extra_t.get('s3_concern_flow')), fmt_num(extra_y.get('s3_concern_flow')),
+                                fmt_num(extra_t.get('s3_concern_lmtd')), fmt_num(extra_t.get('s3_concern_proj'))),
+        ("Stage 3 Roll Back",   fmt_num(extra_t.get('s3_rb')),           fmt_num(extra_y.get('s3_rb')),
+                                "---",                                   "---"),
+    ]
+    for idx, (lbl, tv, yv, lv, pv) in enumerate(rows_s2):
+        draw_row([lbl, tv, yv, lv, pv], col_x2,
+                 [COLOR_TEXT, COLOR_TEXT, COLOR_TEXT_SEC, COLOR_TEXT_SEC, COLOR_SUBZONE], idx)
+    draw.line([30, y, width - 30, y], fill=COLOR_GRID_BORDER, width=2)
+    y += 20
+    draw.text((50, y), "(a) * Agreement level S3 concern,  (b) Efficiency% excluding hold cases.",
+              fill=COLOR_TEXT_SEC, font=font_small)
+    y += 50
+
+    # ── Section 3 ─────────────────────────────────────────────────────────────
+    draw_section_header("3. Bottom Sub-Regions | Efficiency %")
+    col_x3 = [50, 250, 450, 600, 800]
+    draw_table_header(["Bucket", "Bottom 1", "Eff %", "Bottom 2", "Eff %"], col_x3)
+    buckets_s3 = [
+        ("Fresh",              'fresh_eff'),
+        ("1-29 (S2 Concern)",  '129_eff'),
+        ("1-29 Norm",          'norm_eff'),
+        ("30-59",              '3059_eff'),
+        ("60-89 (S3 Concern)", 's3_eff'),
+    ]
+    for idx, (lbl, eff_k) in enumerate(buckets_s3):
+        b = bottom2_eff(today_m, eff_k, subzones, display)
+        b1n = b[0][0] if len(b) > 0 else "---"; b1v = fmt_pct(b[0][1]) if len(b) > 0 else "---"
+        b2n = b[1][0] if len(b) > 1 else "---"; b2v = fmt_pct(b[1][1]) if len(b) > 1 else "---"
+        draw_row([lbl, b1n, b1v, b2n, b2v], col_x3,
+                 [COLOR_TEXT, COLOR_SUBZONE, COLOR_TEXT, COLOR_SUBZONE, COLOR_TEXT_SEC], idx)
+    draw.line([30, y, width - 30, y], fill=COLOR_GRID_BORDER, width=2)
+    y += 50
+
+    # ── Section 4 ─────────────────────────────────────────────────────────────
+    draw_section_header("4. Bottom Sub-Regions | AOD Flow Value (Crs.)")
+    col_x4 = [50, 250, 450, 600, 800]
+    draw_table_header(["Bucket", "Bottom 1", "Flow Value", "Bottom 2", "Flow Value"], col_x4)
+    buckets_s4 = [
+        ("Fresh",              'fresh_flow'),
+        ("1-29 (S2 Concern)",  '129_flow'),
+        ("30-59",              '3059_flow'),
+        ("60-89 (S3 Concern)", 's3_flow'),
+    ]
+    for idx, (lbl, flow_k) in enumerate(buckets_s4):
+        b = bottom2_flow(today_m, flow_k, subzones, display)
+        b1n = b[0][0] if len(b) > 0 else "---"; b1v = fmt_num(b[0][1]) if len(b) > 0 else "---"
+        b2n = b[1][0] if len(b) > 1 else "---"; b2v = fmt_num(b[1][1]) if len(b) > 1 else "---"
+        draw_row([lbl, b1n, b1v, b2n, b2v], col_x4,
+                 [COLOR_TEXT, COLOR_SUBZONE, COLOR_TEXT, COLOR_SUBZONE, COLOR_TEXT_SEC], idx)
+    draw.line([30, y, width - 30, y], fill=COLOR_GRID_BORDER, width=2)
+    y += 80
+
+    # Footer
+    draw.text((50, y), f"Generated on {date.today().strftime('%d %b %Y')} | Collections MIS Report | Confidential",
+              fill=COLOR_TEXT_SEC, font=font_small)
+
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return buf
+
+
+# ── HTML Report Generator ─────────────────────────────────────────────────────
+def build_html_report(today_m, yest_m, extra_t, extra_y, date_str, view_key):
+    cfg      = ZONE_CONFIG[view_key]
+    region_t = today_m.get(view_key, {})
+    region_y = yest_m.get(view_key, {})
+    subzones = cfg['subzones']
+    display  = cfg['display']
+    label    = cfg['label']
+
+    def arrow(t, lmtd):
+        if t is None or lmtd is None: return "", ""
+        if t > lmtd:
+            return ' <span style="color:#38a169;font-weight:bold;">↑</span>', \
+                   ' <span style="color:#e53e3e;font-weight:bold;">↓</span>'
+        if t < lmtd:
+            return ' <span style="color:#e53e3e;font-weight:bold;">↓</span>', \
+                   ' <span style="color:#38a169;font-weight:bold;">↑</span>'
+        return "", ""
+
+    def s1_rows():
+        buckets = [
+            ("Fresh",              'fresh_eff','fresh_lmtd','fresh_flow'),
+            ("1–29",               '129_eff',  '129_lmtd',  '129_flow'),
+            ("1–29 Norm%",         'norm_eff', 'norm_lmtd', None),
+            ("30-59",              '3059_eff', '3059_lmtd', '3059_flow'),
+            ("60-89 (S3 CONCERN)", 's3_eff',   's3_lmtd',   's3_flow'),
+        ]
+        html = ""
+        for lbl, eff_k, lmtd_k, flow_k in buckets:
+            t = region_t.get(eff_k); l = region_t.get(lmtd_k)
+            ta, la = arrow(t, l)
+            html += f"""<tr>
+<td class="label">{lbl}</td>
+<td class="val today">{fmt_pct(t)}{ta}</td>
+<td class="val">{fmt_pct(region_y.get(eff_k))}</td>
+<td class="val">{fmt_pct(l)}{la}</td>
+<td class="val flow">{fmt_num(region_t.get(flow_k)) if flow_k and region_t.get(flow_k) is not None else '---'}</td>
+</tr>"""
+        return html
+
+    def s2_rows():
+        rows = [
+            ("1-29 Norm",            fmt_num(extra_t.get('norm_129')),        fmt_num(extra_y.get('norm_129')),
+                                     fmt_num(extra_t.get('norm_129_lmtd')),   fmt_num(extra_t.get('norm_129_proj'))),
+            ("Stage 2 Roll Back",    fmt_num(extra_t.get('s2_rb')),           fmt_num(extra_y.get('s2_rb')),
+                                     fmt_num(extra_t.get('s2_lmtd')),         fmt_num(extra_t.get('s2_proj'))),
+            ("Stage 3 Concern Flow", fmt_num(extra_t.get('s3_concern_flow')), fmt_num(extra_y.get('s3_concern_flow')),
+                                     fmt_num(extra_t.get('s3_concern_lmtd')), fmt_num(extra_t.get('s3_concern_proj'))),
+            ("Stage 3 Roll Back",    fmt_num(extra_t.get('s3_rb')),           fmt_num(extra_y.get('s3_rb')),
+                                     "---", "---"),
+        ]
+        return "".join(f"""<tr>
+<td class="label">{lbl}</td><td class="val today">{tv}</td>
+<td class="val">{yv}</td><td class="val">{lv}</td><td class="val flow">{pv}</td>
+</tr>""" for lbl,tv,yv,lv,pv in rows)
+
+    def s3_rows():
+        buckets = [
+            ("Fresh",              'fresh_eff'),
+            ("1-29 (S2 Concern)",  '129_eff'),
+            ("1-29 Norm",          'norm_eff'),
+            ("30-59",              '3059_eff'),
+            ("60-89 (S3 Concern)", 's3_eff'),
+        ]
+        html = ""
+        for lbl, eff_k in buckets:
+            b = bottom2_eff(today_m, eff_k, subzones, display)
+            b1n = b[0][0] if len(b)>0 else '---'; b1v = fmt_pct(b[0][1]) if len(b)>0 else '---'
+            b2n = b[1][0] if len(b)>1 else '---'; b2v = fmt_pct(b[1][1]) if len(b)>1 else '---'
+            html += f"""<tr>
+<td class="label">{lbl}</td><td class="val subzone">{b1n}</td><td class="val today">{b1v}</td>
+<td class="val subzone">{b2n}</td><td class="val">{b2v}</td></tr>"""
+        return html
+
+    def s4_rows():
+        buckets = [
+            ("Fresh",              'fresh_flow'),
+            ("1-29 (S2 Concern)",  '129_flow'),
+            ("30-59",              '3059_flow'),
+            ("60-89 (S3 Concern)", 's3_flow'),
+        ]
+        html = ""
+        for lbl, flow_k in buckets:
+            b = bottom2_flow(today_m, flow_k, subzones, display)
+            b1n = b[0][0] if len(b)>0 else '---'; b1v = fmt_num(b[0][1]) if len(b)>0 else '---'
+            b2n = b[1][0] if len(b)>1 else '---'; b2v = fmt_num(b[1][1]) if len(b)>1 else '---'
+            html += f"""<tr>
+<td class="label">{lbl}</td><td class="val subzone">{b1n}</td><td class="val today">{b1v}</td>
+<td class="val subzone">{b2n}</td><td class="val">{b2v}</td></tr>"""
+        return html
+
+    css = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#f0f4f8;color:#1a202c;padding:32px 24px}
+.report-wrapper{max-width:860px;margin:0 auto}
+.report-header{background:linear-gradient(135deg,#1a365d 0%,#2b6cb0 100%);border-radius:16px 16px 0 0;
+  padding:28px 36px 24px;color:#fff;display:flex;justify-content:space-between;align-items:flex-end}
+.report-header .title{font-size:20px;font-weight:700;letter-spacing:.5px}
+.report-header .subtitle{font-size:13px;opacity:.75;margin-top:4px}
+.report-header .badge{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);
+  border-radius:8px;padding:6px 14px;font-size:13px;font-weight:600;white-space:nowrap}
+.report-body{background:#fff;border-radius:0 0 16px 16px;padding:32px 36px 36px;
+  box-shadow:0 4px 24px rgba(0,0,0,.08)}
+.section{margin-bottom:36px}.section:last-child{margin-bottom:0}
+.section-footer-note{font-size:11px;color:#718096;margin-top:8px;padding-left:4px}
+.section-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.section-number{background:#2b6cb0;color:#fff;font-size:11px;font-weight:700;width:24px;height:24px;
+  border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.section-title{font-size:14px;font-weight:700;color:#1a365d;text-transform:uppercase;letter-spacing:.6px}
+table{width:100%;border-collapse:separate;border-spacing:0;border-radius:10px;overflow:hidden;
+  border:1px solid #e2e8f0;font-size:13px}
+thead tr{background:#ebf4ff}
+thead th{padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:#2b6cb0;
+  text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #bee3f8}
+thead th:first-child{text-align:left}
+tbody tr:nth-child(even){background:#f7fafc}
+tbody tr:hover{background:#ebf8ff}
+td{padding:10px 14px;border-bottom:1px solid #e2e8f0}
+tbody tr:last-child td{border-bottom:none}
+td.label{font-weight:600;color:#2d3748;text-align:left;white-space:nowrap}
+td.val{text-align:center;color:#4a5568;font-variant-numeric:tabular-nums}
+td.today{font-weight:700;color:#1a365d}
+td.flow{color:#276749;font-weight:600}
+td.subzone{font-weight:600;color:#744210}
+.report-footer{text-align:center;margin-top:20px;font-size:11px;color:#a0aec0;letter-spacing:.3px}
+</style>"""
+
+    return f"""<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/>
+<title>Daily Collections Update | {date_str} | {label}</title>{css}</head>
+<body><div class="report-wrapper">
+<div class="report-header">
+  <div><div class="title">DAILY COLLECTIONS UPDATE</div>
+  <div class="subtitle">{label} — Efficiency Summary</div></div>
+  <div class="badge">📅 {date_str}</div>
+</div>
+<div class="report-body">
+
+<div class="section">
+<div class="section-header"><div class="section-number">1</div>
+<div class="section-title">Efficiency %</div></div>
+<table><thead><tr><th>Bucket</th><th>Today</th><th>Yesterday</th><th>LMTD</th>
+<th>AOD Flow Value (GA Crs.)</th></tr></thead>
+<tbody>{s1_rows()}</tbody></table></div>
+
+<div class="section">
+<div class="section-header"><div class="section-number">2</div>
+<div class="section-title">Norm / RB / RF Metrics</div></div>
+<table><thead><tr><th>Bucket</th><th>Today</th><th>Yesterday</th><th>LMTD</th>
+<th>Projection Crs.</th></tr></thead>
+<tbody>{s2_rows()}</tbody></table>
+<div class="section-footer-note">(a) * Agreement level S3 concern, (b) Efficiency% excluding hold cases.</div>
+</div>
+
+<div class="section">
+<div class="section-header"><div class="section-number">3</div>
+<div class="section-title">Bottom Sub-Regions | Efficiency %</div></div>
+<table><thead><tr><th>Bucket</th><th>Bottom 1</th><th>Eff %</th><th>Bottom 2</th>
+<th>Eff %</th></tr></thead>
+<tbody>{s3_rows()}</tbody></table></div>
+
+<div class="section">
+<div class="section-header"><div class="section-number">4</div>
+<div class="section-title">Bottom Sub-Regions | AOD Flow Value Crs.</div></div>
+<table><thead><tr><th>Bucket</th><th>Bottom 1</th><th>Flow Value</th><th>Bottom 2</th>
+<th>Flow Value</th></tr></thead>
+<tbody>{s4_rows()}</tbody></table></div>
+
+</div>
+<div class="report-footer">Generated on {date.today().strftime("%d %b %Y")} &nbsp;|&nbsp;
+Collections MIS Report &nbsp;|&nbsp; Confidential</div>
+</div></body></html>"""
+
+
 # ── UI ────────────────────────────────────────────────────────────────────────
-st.title("📊 Daily Collections Update Generator")
-st.caption("Upload today's and yesterday's dashboard files to auto-generate the PAN INDIA summary.")
- 
-col1, col2 = st.columns(2)
+
+# App banner
+st.markdown("""
+<div class="app-banner">
+  <div>
+    <div class="banner-title">📊 Daily Collections Update Generator</div>
+    <div class="banner-sub">Upload files · Choose region · Generate professional report</div>
+  </div>
+  <div class="banner-badge">MIS Report Tool</div>
+</div>
+""", unsafe_allow_html=True)
+
+# ── File uploads ──────────────────────────────────────────────────────────────
+col1, col2 = st.columns(2, gap="large")
+
 with col1:
-    today_file = st.file_uploader("📁 Today's Dashboard", type=['xlsx','xls','xlsb','csv'], key='today')
-    today_s2_file = st.file_uploader("📁 Today's Stage 2 File (Optional)", type=['xlsx','xls','xlsb'], key='today_s2')
+    st.markdown('<div class="upload-card"><div class="card-title">📅 Today\'s Files</div>', unsafe_allow_html=True)
+    today_file    = st.file_uploader("Dashboard (Main)",      type=['xlsx','xls','xlsb','csv'], key='today',    label_visibility="visible")
+    today_s2_file = st.file_uploader("Stage 2 Summary",       type=['xlsx','xls','xlsb','csv'], key='today_s2', label_visibility="visible")
+    today_s3_file = st.file_uploader("Stage 3 Concern",       type=['xlsx','xls','xlsb','csv'], key='today_s3', label_visibility="visible")
+    st.markdown('</div>', unsafe_allow_html=True)
+
 with col2:
-    yest_file  = st.file_uploader("📁 Yesterday's Dashboard", type=['xlsx','xls','xlsb','csv'], key='yest')
-    yest_s2_file = st.file_uploader("📁 Yesterday's Stage 2 File (Optional)", type=['xlsx','xls','xlsb'], key='yest_s2')
- 
-report_date = st.text_input("Report Date", value="22-Jun-26", placeholder="e.g. 22-Jun-26")
- 
-if st.button("⚡ Generate Report", type="primary", use_container_width=True):
-    if not today_file or not yest_file:
-        st.error("Please upload both today's and yesterday's main dashboard files.")
+    st.markdown('<div class="upload-card"><div class="card-title">📅 Yesterday\'s Files</div>', unsafe_allow_html=True)
+    yest_file     = st.file_uploader("Dashboard (Main)",      type=['xlsx','xls','xlsb','csv'], key='yest',     label_visibility="visible")
+    yest_s2_file  = st.file_uploader("Stage 2 Summary",       type=['xlsx','xls','xlsb','csv'], key='yest_s2',  label_visibility="visible")
+    yest_s3_file  = st.file_uploader("Stage 3 Concern",       type=['xlsx','xls','xlsb','csv'], key='yest_s3',  label_visibility="visible")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# ── Region selector & date ────────────────────────────────────────────────────
+st.markdown('<div class="scope-card"><div class="scope-title">🗺️ Report Scope & Date</div>', unsafe_allow_html=True)
+
+cfg_col1, cfg_col2, cfg_col3 = st.columns([2, 3, 2], gap="medium")
+
+with cfg_col1:
+    scope = st.radio(
+        "View type",
+        ["🌐  PAN INDIA", "📍  Sub-Region"],
+        label_visibility="collapsed",
+    )
+
+region_options = {
+    "North 1  —  Delhi / Gurugram / UP":         "NORTH_1",
+    "North 2  —  PHC: Punjab / Haryana / UK":    "NORTH_2",
+    "North 3  —  Rajasthan":                     "NORTH_3",
+    "East 1   —  Chattisgarh / Odisha / WB":     "EAST_1",
+    "East 2   —  Bihar / Jharkhand / NE":        "EAST_2",
+    "South 1  —  AP / Kerala / Tamil Nadu":      "SOUTH_1",
+    "South 2  —  Karnataka / Telangana":         "SOUTH_2",
+    "West 1   —  Gujarat / Maharashtra":         "WEST_1",
+    "West 2   —  MP / Mumbai / Goa":             "WEST_2",
+}
+
+with cfg_col2:
+    if "Sub-Region" in scope:
+        chosen   = st.selectbox("Choose sub-region", list(region_options.keys()), label_visibility="collapsed")
+        view_key = region_options[chosen]
     else:
-        with st.spinner("Parsing dashboards…"):
+        st.markdown("<div style='color:#718096;font-size:13px;padding-top:8px;'>All 9 sub-zones included</div>", unsafe_allow_html=True)
+        view_key = "PAN_INDIA"
+
+with cfg_col3:
+    report_date = st.text_input("Report Date", value="22-Jun-26", placeholder="e.g. 22-Jun-26", label_visibility="collapsed")
+    st.markdown("<div style='color:#718096;font-size:11px;margin-top:-8px;'>Report date (e.g. 22-Jun-26)</div>", unsafe_allow_html=True)
+
+st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+generate = st.button("⚡  Generate Report", type="primary", use_container_width=True)
+
+if generate:
+    if not today_file or not yest_file:
+        st.error("⚠️ Please upload at least both dashboard files — Today and Yesterday.")
+    else:
+        with st.spinner("Parsing files and building report…"):
             try:
-                today_dfs = load_all_sheets(today_file)
-                yest_dfs  = load_all_sheets(yest_file)
-                
-                today_df_main = today_dfs.get("PROJ-OVERALL", pd.DataFrame())
-                yest_df_main  = yest_dfs.get("PROJ-OVERALL", pd.DataFrame())
-                
+                today_dfs    = load_all_sheets(today_file)
+                yest_dfs     = load_all_sheets(yest_file)
+                today_s2_dfs = load_all_sheets(today_s2_file) if today_s2_file else {}
+                yest_s2_dfs  = load_all_sheets(yest_s2_file)  if yest_s2_file  else {}
+                today_s3_dfs = load_all_sheets(today_s3_file) if today_s3_file else {}
+                yest_s3_dfs  = load_all_sheets(yest_s3_file)  if yest_s3_file  else {}
+
+                today_df_main = today_dfs.get("PROJ-OVERALL",
+                                list(today_dfs.values())[0] if today_dfs else pd.DataFrame())
+                yest_df_main  = yest_dfs.get("PROJ-OVERALL",
+                                list(yest_dfs.values())[0]  if yest_dfs  else pd.DataFrame())
+
                 today_rows = find_data_rows(today_df_main)
                 yest_rows  = find_data_rows(yest_df_main)
- 
+
                 if not today_rows or not yest_rows:
                     st.error(
-                        "Could not find zone data in PROJ-OVERALL. Ensure the first column has zone "
-                        "names: NORTH, EAST, SOUTH, WEST, PAN INDIA, NORTH_1, etc."
+                        "Could not find zone data in the dashboard file. "
+                        "Ensure column A contains zone names like NORTH_1, DELHI, etc."
                     )
                 else:
                     today_m = extract_all(today_rows)
                     yest_m  = extract_all(yest_rows)
-                    
-                    # Extract Stage 2 specific data
-                    extra_t = {'s2_rb_today': get_stage2_rollback(today_s2_file)}
-                    extra_y = {'s2_rb_today': get_stage2_rollback(yest_s2_file)}
- 
-                    render_report(today_m, yest_m, extra_t, extra_y, report_date)
- 
-                    st.divider()
-                    png_file = create_report_image(
-                        today_m,
-                        yest_m,
-                        extra_t,
-                        extra_y,
-                        report_date
-                    )
- 
-                    st.download_button(
-                        label="📷 Download Report Image (PNG)",
-                        data=png_file,
-                        file_name=f"Collections_Update_{report_date}.png",
-                        mime="image/png"
-                    )
- 
-                    html_str = build_html_report(today_m, yest_m, extra_t, extra_y, report_date)
-                    download_button(html_str, f"Collections_Update_{report_date}.html")
- 
+
+                    dash_t_extra = extract_dashboard_metrics(today_df_main)
+                    dash_y_extra = extract_dashboard_metrics(yest_df_main)
+                    s2_t_extra   = extract_s2_metrics(today_s2_dfs)
+                    s2_y_extra   = extract_s2_metrics(yest_s2_dfs)
+                    s3_t_extra   = extract_s3_metrics(today_s3_dfs)
+                    s3_y_extra   = extract_s3_metrics(yest_s3_dfs)
+
+                    extra_t = {**dash_t_extra, **s2_t_extra, **s3_t_extra}
+                    extra_y = {**dash_y_extra, **s2_y_extra, **s3_y_extra}
+
+                    if view_key not in today_m:
+                        st.warning(
+                            f"⚠️ No data found for **{ZONE_CONFIG[view_key]['label']}** in today's file. "
+                            "Check that the zone row exists in column A."
+                        )
+
+                    # ── Render inline report ───────────────────────────────
+                    st.markdown("---")
+                    render_report(today_m, yest_m, extra_t, extra_y, report_date, view_key)
+
+                    # ── Downloads ─────────────────────────────────────────
+                    st.markdown("---")
+                    dl_col1, dl_col2 = st.columns(2, gap="medium")
+
+                    safe_label = ZONE_CONFIG[view_key]['label'].replace(' ', '_')
+
+                    with dl_col1:
+                        png_buf = create_report_image(today_m, yest_m, extra_t, extra_y, report_date, view_key)
+                        st.download_button(
+                            label="📷  Download Report Image (PNG)",
+                            data=png_buf,
+                            file_name=f"Collections_{safe_label}_{report_date}.png",
+                            mime="image/png",
+                            use_container_width=True,
+                        )
+
+                    with dl_col2:
+                        html_str = build_html_report(today_m, yest_m, extra_t, extra_y, report_date, view_key)
+                        b64 = base64.b64encode(html_str.encode()).decode()
+                        st.markdown(
+                            f'<a href="data:text/html;base64,{b64}" '
+                            f'download="Collections_{safe_label}_{report_date}.html" '
+                            f'style="text-decoration:none;">'
+                            f'<button style="width:100%;padding:10px 0;background:linear-gradient(135deg,#276749,#38a169);'
+                            f'color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:15px;'
+                            f'font-weight:700;letter-spacing:.4px;box-shadow:0 4px 14px rgba(56,161,105,.35);">'
+                            f'🌐&nbsp; Download Report (HTML)</button></a>',
+                            unsafe_allow_html=True,
+                        )
+
             except Exception as e:
                 st.error(f"Error: {e}")
                 st.exception(e)
- 
-st.divider()
-with st.expander("ℹ️ How to use"):
+
+st.markdown("<br>", unsafe_allow_html=True)
+with st.expander("ℹ️  How to use this tool"):
     st.markdown("""
-    1. Export the dashboard as **Excel (.xlsx / .xlsb)** or **CSV** — same column layout.
-    2. Upload **today's** file on the left, **yesterday's** on the right.
-    3. Upload the **Stage 2 Files** (if available) in the respective optional slots.
-    4. Set the report date and click **Generate Report**.
-    5. Download the **Report Image (PNG)** for sharing or the **Report (HTML)** for email/printing.
-    """)
+| Step | Action |
+|------|--------|
+| 1 | Upload **Today's** Dashboard, Stage 2 Summary, and Stage 3 Concern files on the left |
+| 2 | Upload the matching **Yesterday's** files on the right |
+| 3 | Choose **PAN INDIA** for the overall view, or pick a specific **Sub-Region** |
+| 4 | Enter the report date and click **Generate Report** |
+| 5 | Download as **PNG** (for sharing/WhatsApp) or **HTML** (for email/printing) |
+
+> Stage 2 and Stage 3 files are optional but recommended — without them Section 2 (Norm / RB / RF Metrics) will show `---`.
+""")
+
