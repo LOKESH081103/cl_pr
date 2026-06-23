@@ -11,129 +11,164 @@ st.set_page_config(page_title="Daily Collections Update", layout="wide", page_ic
 st.markdown("""
 <style>
 /* ── Base ── */
-[data-testid="stAppViewContainer"] {background: #f0f4f8;}
+[data-testid="stAppViewContainer"] {background: #f5f7fa;}
 [data-testid="stHeader"] {background: transparent;}
 
 /* ── App header banner ── */
 .app-banner {
-    background: linear-gradient(135deg, #1a365d 0%, #2b6cb0 100%);
-    border-radius: 14px;
-    padding: 28px 36px 22px;
+    background: linear-gradient(135deg, #0f2a5f 0%, #1a4d8f 50%, #2563c4 100%);
+    border-radius: 18px;
+    padding: 32px 40px 26px;
     color: #fff;
-    margin-bottom: 28px;
+    margin-bottom: 32px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    box-shadow: 0 8px 32px rgba(15, 42, 95, 0.25);
+    border: 1px solid rgba(255,255,255,.08);
 }
-.app-banner .banner-title {font-size: 26px; font-weight: 800; letter-spacing: .6px; margin-bottom: 4px;}
-.app-banner .banner-sub   {font-size: 13px; opacity: .8; font-weight: 400;}
+.app-banner .banner-title {font-size: 28px; font-weight: 800; letter-spacing: .8px; margin-bottom: 6px;}
+.app-banner .banner-sub   {font-size: 14px; opacity: .85; font-weight: 400; letter-spacing: .3px;}
 .app-banner .banner-badge {
-    background: rgba(255,255,255,.18);
-    border: 1px solid rgba(255,255,255,.35);
-    border-radius: 10px;
-    padding: 8px 18px;
+    background: rgba(255,255,255,.15);
+    border: 1.5px solid rgba(255,255,255,.4);
+    border-radius: 12px;
+    padding: 10px 20px;
     font-size: 13px;
     font-weight: 700;
     letter-spacing: .4px;
+    backdrop-filter: blur(10px);
 }
 
 /* ── Upload card ── */
 .upload-card {
     background: #ffffff;
-    border-radius: 12px;
-    padding: 22px 24px 18px;
-    box-shadow: 0 2px 12px rgba(0,0,0,.07);
-    margin-bottom: 6px;
+    border-radius: 16px;
+    padding: 26px 28px 22px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.06);
+    margin-bottom: 8px;
+    border: 1px solid #e8ecf1;
+    transition: all .3s ease;
+}
+.upload-card:hover {
+    box-shadow: 0 8px 24px rgba(0,0,0,.08);
+    border-color: #d0dce6;
 }
 .upload-card .card-title {
-    font-size: 13px;
-    font-weight: 700;
-    color: #2b6cb0;
+    font-size: 12px;
+    font-weight: 800;
+    color: #1a4d8f;
     text-transform: uppercase;
-    letter-spacing: .6px;
-    margin-bottom: 14px;
-    padding-bottom: 8px;
-    border-bottom: 2px solid #ebf4ff;
+    letter-spacing: .7px;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 2.5px solid #e8f1f9;
 }
 
 /* ── Scope selector card ── */
 .scope-card {
     background: #ffffff;
-    border-radius: 12px;
-    padding: 20px 24px;
-    box-shadow: 0 2px 12px rgba(0,0,0,.07);
-    margin-bottom: 24px;
+    border-radius: 16px;
+    padding: 26px 28px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.06);
+    margin-bottom: 28px;
+    border: 1px solid #e8ecf1;
 }
 .scope-card .scope-title {
     font-size: 14px;
-    font-weight: 700;
-    color: #1a365d;
-    margin-bottom: 16px;
+    font-weight: 800;
+    color: #0f2a5f;
+    margin-bottom: 18px;
+    letter-spacing: .5px;
+}
+
+/* ── Radio & Select styling ── */
+[data-testid="stRadio"] label {
+    font-weight: 600 !important;
+    font-size: 14px !important;
+}
+[data-testid="stSelectbox"] {
+    margin-top: 2px;
 }
 
 /* ── Generate button ── */
 [data-testid="stButton"] > button {
-    background: linear-gradient(135deg, #1a365d, #2b6cb0) !important;
+    background: linear-gradient(135deg, #0f2a5f 0%, #1a4d8f 50%, #2563c4 100%) !important;
     color: #fff !important;
-    font-weight: 700 !important;
-    font-size: 15px !important;
+    font-weight: 800 !important;
+    font-size: 16px !important;
     border: none !important;
-    border-radius: 10px !important;
-    padding: 12px 0 !important;
-    letter-spacing: .4px !important;
-    box-shadow: 0 4px 14px rgba(43,108,176,.35) !important;
-    transition: opacity .2s !important;
+    border-radius: 12px !important;
+    padding: 14px 0 !important;
+    letter-spacing: .5px !important;
+    box-shadow: 0 6px 20px rgba(25, 77, 143, 0.3) !important;
+    transition: all .3s ease !important;
+    border: 1px solid rgba(255,255,255,.1) !important;
 }
-[data-testid="stButton"] > button:hover {opacity: .88 !important;}
+[data-testid="stButton"] > button:hover {
+    opacity: .92 !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 28px rgba(25, 77, 143, 0.4) !important;
+}
+[data-testid="stButton"] > button:active {
+    transform: translateY(0) !important;
+}
 
 /* ── Report section headers ── */
 .rpt-section-head {
-    background: linear-gradient(90deg, #1a365d 0%, #2b6cb0 100%);
-    border-radius: 8px;
-    padding: 10px 18px;
+    background: linear-gradient(90deg, #0f2a5f 0%, #1a4d8f 100%);
+    border-radius: 10px;
+    padding: 12px 20px;
     color: #fff;
-    font-size: 14px;
-    font-weight: 700;
+    font-size: 15px;
+    font-weight: 800;
     letter-spacing: .5px;
-    margin: 20px 0 12px;
+    margin: 24px 0 14px;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
 }
 .rpt-section-head .snum {
-    background: rgba(255,255,255,.25);
+    background: rgba(255,255,255,.3);
     border-radius: 50%;
-    width: 24px; height: 24px;
+    width: 28px; height: 28px;
     display: inline-flex;
     align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 800;
+    font-size: 13px; font-weight: 900;
     flex-shrink: 0;
 }
 
 /* ── Report title ── */
 .rpt-title {
-    background: linear-gradient(135deg, #1a365d 0%, #2b6cb0 100%);
-    border-radius: 12px;
-    padding: 22px 28px;
+    background: linear-gradient(135deg, #0f2a5f 0%, #1a4d8f 50%, #2563c4 100%);
+    border-radius: 16px;
+    padding: 28px 32px;
     color: #fff;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
+    box-shadow: 0 8px 24px rgba(15, 42, 95, 0.15);
+    border: 1px solid rgba(255,255,255,.08);
 }
-.rpt-title .rt-main  {font-size: 19px; font-weight: 800; letter-spacing: .4px;}
-.rpt-title .rt-sub   {font-size: 12px; opacity: .8; margin-top: 3px;}
+.rpt-title .rt-main  {font-size: 21px; font-weight: 900; letter-spacing: .5px;}
+.rpt-title .rt-sub   {font-size: 13px; opacity: .85; margin-top: 4px; letter-spacing: .3px;}
 .rpt-title .rt-badge {
-    background: rgba(255,255,255,.18);
-    border: 1px solid rgba(255,255,255,.3);
-    border-radius: 8px;
-    padding: 5px 14px;
+    background: rgba(255,255,255,.15);
+    border: 1.5px solid rgba(255,255,255,.35);
+    border-radius: 10px;
+    padding: 8px 16px;
     font-size: 13px;
     font-weight: 700;
+    backdrop-filter: blur(10px);
 }
 
 /* ── Dataframe tweaks ── */
-[data-testid="stDataFrame"] {border-radius: 10px; overflow: hidden;}
+[data-testid="stDataFrame"] {
+    border-radius: 12px; 
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,.05);
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -512,63 +547,63 @@ def create_report_image(today_m, yest_m, extra_t, extra_y, report_date, view_key
     display  = cfg['display']
     label    = cfg['label']
 
-    width = 1600; height = 2800
+    width = 3000; height = 5250
     img  = Image.new("RGB", (width, height), "#ffffff")
     draw = ImageDraw.Draw(img)
 
-    COLOR_HEADER_BG      = "#1a365d"
+    COLOR_HEADER_BG      = "#0f2a5f"
     COLOR_HEADER_TEXT    = "#ffffff"
-    COLOR_SECTION_BG     = "#2b6cb0"
+    COLOR_SECTION_BG     = "#1a4d8f"
     COLOR_SECTION_TEXT   = "#ffffff"
-    COLOR_GRID_HEADER_BG = "#ebf4ff"
-    COLOR_GRID_HEADER_T  = "#2b6cb0"
-    COLOR_GRID_BORDER    = "#e2e8f0"
-    COLOR_GRID_ROW_ALT   = "#f7fafc"
-    COLOR_TEXT           = "#1a202c"
+    COLOR_GRID_HEADER_BG = "#e8f1f9"
+    COLOR_GRID_HEADER_T  = "#1a4d8f"
+    COLOR_GRID_BORDER    = "#dce5f0"
+    COLOR_GRID_ROW_ALT   = "#f7fbff"
+    COLOR_TEXT           = "#0f2a5f"
     COLOR_TEXT_SEC       = "#4a5568"
-    COLOR_SUBZONE        = "#744210"
+    COLOR_SUBZONE        = "#7a3d0d"
 
     try:
-        font_title    = ImageFont.truetype("arial.ttf", 48)
-        font_subtitle = ImageFont.truetype("arial.ttf", 20)
-        font_section  = ImageFont.truetype("arial.ttf", 24)
-        font_header   = ImageFont.truetype("arial.ttf", 16)
-        font_body     = ImageFont.truetype("arial.ttf", 14)
-        font_small    = ImageFont.truetype("arial.ttf", 12)
+        font_title    = ImageFont.truetype("arial.ttf", 90)
+        font_subtitle = ImageFont.truetype("arial.ttf", 38)
+        font_section  = ImageFont.truetype("arial.ttf", 45)
+        font_header   = ImageFont.truetype("arial.ttf", 30)
+        font_body     = ImageFont.truetype("arial.ttf", 26)
+        font_small    = ImageFont.truetype("arial.ttf", 23)
     except:
         font_title = font_subtitle = font_section = font_header = font_body = font_small = ImageFont.load_default()
 
     y = 0
     # Header
-    draw.rectangle([0, 0, width, 140], fill=COLOR_HEADER_BG)
-    draw.text((50, 30), "DAILY COLLECTIONS UPDATE", fill=COLOR_HEADER_TEXT, font=font_title)
-    draw.text((50, 90), f"{label}  |  {report_date}", fill=COLOR_HEADER_TEXT, font=font_subtitle)
-    y = 180
+    draw.rectangle([0, 0, width, 260], fill=COLOR_HEADER_BG)
+    draw.text((95, 55), "DAILY COLLECTIONS UPDATE", fill=COLOR_HEADER_TEXT, font=font_title)
+    draw.text((95, 170), f"{label}  |  {report_date}", fill=COLOR_HEADER_TEXT, font=font_subtitle)
+    y = 340
 
-    row_height = 45
+    row_height = 85
 
     def draw_section_header(title):
         nonlocal y
-        draw.rectangle([30, y, width - 30, y + 50], fill=COLOR_SECTION_BG)
-        draw.text((50, y + 12), title, fill=COLOR_SECTION_TEXT, font=font_section)
-        y += 70
+        draw.rectangle([60, y, width - 60, y + 95], fill=COLOR_SECTION_BG)
+        draw.text((95, y + 22), title, fill=COLOR_SECTION_TEXT, font=font_section)
+        y += 132
 
     def draw_table_header(headers, col_x):
         nonlocal y
-        draw.rectangle([30, y, width - 30, y + 50], fill=COLOR_GRID_HEADER_BG)
+        draw.rectangle([60, y, width - 60, y + 95], fill=COLOR_GRID_HEADER_BG)
         for i, h in enumerate(headers):
-            draw.text((col_x[i] + 10, y + 15), h, fill=COLOR_GRID_HEADER_T, font=font_header)
-        draw.line([30, y + 50, width - 30, y + 50], fill=COLOR_GRID_BORDER, width=2)
-        y += 50
+            draw.text((col_x[i] + 18, y + 28), h, fill=COLOR_GRID_HEADER_T, font=font_header)
+        draw.line([60, y + 95, width - 60, y + 95], fill=COLOR_GRID_BORDER, width=3)
+        y += 95
 
     def draw_row(cells, col_x, colors, idx):
         nonlocal y
         if idx % 2 == 0:
-            draw.rectangle([30, y, width - 30, y + row_height], fill=COLOR_GRID_ROW_ALT)
-        for x in col_x[1:] + [width - 30]:
-            draw.line([x, y, x, y + row_height], fill=COLOR_GRID_BORDER, width=1)
+            draw.rectangle([60, y, width - 60, y + row_height], fill=COLOR_GRID_ROW_ALT)
+        for x in col_x[1:] + [width - 60]:
+            draw.line([x, y, x, y + row_height], fill=COLOR_GRID_BORDER, width=2)
         for i, (text, color) in enumerate(zip(cells, colors)):
-            draw.text((col_x[i] + 10, y + 12), str(text), fill=color, font=font_body)
+            draw.text((col_x[i] + 18, y + 22), str(text), fill=color, font=font_body)
         y += row_height
 
     def get_w(txt):
@@ -579,7 +614,7 @@ def create_report_image(today_m, yest_m, extra_t, extra_y, report_date, view_key
 
     # ── Section 1 ─────────────────────────────────────────────────────────────
     draw_section_header("1. Efficiency %")
-    col_x1 = [50, 250, 430, 610, 810]
+    col_x1 = [95, 470, 808, 1145, 1520]
     draw_table_header(["Bucket", "Today", "Yesterday", "LMTD", "AOD Flow (GA Crs.)"], col_x1)
     buckets_s1 = [
         ("Fresh",              'fresh_eff', 'fresh_lmtd', 'fresh_flow'),
@@ -597,21 +632,21 @@ def create_report_image(today_m, yest_m, extra_t, extra_y, report_date, view_key
         draw_row([lbl, t_eff_s, fmt_pct(region_y.get(eff_k)), t_lmtd_s, t_flow_s],
                  col_x1, [COLOR_TEXT, COLOR_TEXT, COLOR_TEXT_SEC, COLOR_TEXT_SEC, COLOR_SUBZONE], idx)
         if t_eff_raw is not None and t_lmtd_raw is not None:
-            arrow_y = y - row_height + 12
+            arrow_y = y - row_height + 22
             w_eff   = get_w(t_eff_s)
             w_lmtd  = get_w(t_lmtd_s)
             if t_eff_raw > t_lmtd_raw:
-                draw.text((col_x1[1] + 10 + w_eff + 4, arrow_y), "↑", fill="#38a169", font=font_body)
-                draw.text((col_x1[3] + 10 + w_lmtd + 4, arrow_y), "↓", fill="#e53e3e", font=font_body)
+                draw.text((col_x1[1] + 18 + w_eff + 8, arrow_y), "↑", fill="#38a169", font=font_body)
+                draw.text((col_x1[3] + 18 + w_lmtd + 8, arrow_y), "↓", fill="#e53e3e", font=font_body)
             elif t_eff_raw < t_lmtd_raw:
-                draw.text((col_x1[1] + 10 + w_eff + 4, arrow_y), "↓", fill="#e53e3e", font=font_body)
-                draw.text((col_x1[3] + 10 + w_lmtd + 4, arrow_y), "↑", fill="#38a169", font=font_body)
-    draw.line([30, y, width - 30, y], fill=COLOR_GRID_BORDER, width=2)
-    y += 50
+                draw.text((col_x1[1] + 18 + w_eff + 8, arrow_y), "↓", fill="#e53e3e", font=font_body)
+                draw.text((col_x1[3] + 18 + w_lmtd + 8, arrow_y), "↑", fill="#38a169", font=font_body)
+    draw.line([60, y, width - 60, y], fill=COLOR_GRID_BORDER, width=3)
+    y += 95
 
     # ── Section 2 ─────────────────────────────────────────────────────────────
     draw_section_header("2. Norm / RB / RF Metrics")
-    col_x2 = [50, 250, 430, 610, 810]
+    col_x2 = [95, 470, 808, 1145, 1520]
     draw_table_header(["Bucket", "Today", "Yesterday", "LMTD", "Projection Crs."], col_x2)
     rows_s2 = [
         ("1-29 Norm",           fmt_num(extra_t.get('norm_129')),        fmt_num(extra_y.get('norm_129')),
@@ -626,15 +661,15 @@ def create_report_image(today_m, yest_m, extra_t, extra_y, report_date, view_key
     for idx, (lbl, tv, yv, lv, pv) in enumerate(rows_s2):
         draw_row([lbl, tv, yv, lv, pv], col_x2,
                  [COLOR_TEXT, COLOR_TEXT, COLOR_TEXT_SEC, COLOR_TEXT_SEC, COLOR_SUBZONE], idx)
-    draw.line([30, y, width - 30, y], fill=COLOR_GRID_BORDER, width=2)
-    y += 20
-    draw.text((50, y), "(a) * Agreement level S3 concern,  (b) Efficiency% excluding hold cases.",
+    draw.line([60, y, width - 60, y], fill=COLOR_GRID_BORDER, width=3)
+    y += 38
+    draw.text((95, y), "(a) * Agreement level S3 concern,  (b) Efficiency% excluding hold cases.",
               fill=COLOR_TEXT_SEC, font=font_small)
-    y += 50
+    y += 95
 
     # ── Section 3 ─────────────────────────────────────────────────────────────
     draw_section_header("3. Bottom Sub-Regions | Efficiency %")
-    col_x3 = [50, 250, 450, 600, 800]
+    col_x3 = [95, 470, 845, 1125, 1500]
     draw_table_header(["Bucket", "Bottom 1", "Eff %", "Bottom 2", "Eff %"], col_x3)
     buckets_s3 = [
         ("Fresh",              'fresh_eff'),
@@ -649,12 +684,12 @@ def create_report_image(today_m, yest_m, extra_t, extra_y, report_date, view_key
         b2n = b[1][0] if len(b) > 1 else "---"; b2v = fmt_pct(b[1][1]) if len(b) > 1 else "---"
         draw_row([lbl, b1n, b1v, b2n, b2v], col_x3,
                  [COLOR_TEXT, COLOR_SUBZONE, COLOR_TEXT, COLOR_SUBZONE, COLOR_TEXT_SEC], idx)
-    draw.line([30, y, width - 30, y], fill=COLOR_GRID_BORDER, width=2)
-    y += 50
+    draw.line([60, y, width - 60, y], fill=COLOR_GRID_BORDER, width=3)
+    y += 95
 
     # ── Section 4 ─────────────────────────────────────────────────────────────
     draw_section_header("4. Bottom Sub-Regions | AOD Flow Value (Crs.)")
-    col_x4 = [50, 250, 450, 600, 800]
+    col_x4 = [95, 470, 845, 1125, 1500]
     draw_table_header(["Bucket", "Bottom 1", "Flow Value", "Bottom 2", "Flow Value"], col_x4)
     buckets_s4 = [
         ("Fresh",              'fresh_flow'),
@@ -668,11 +703,11 @@ def create_report_image(today_m, yest_m, extra_t, extra_y, report_date, view_key
         b2n = b[1][0] if len(b) > 1 else "---"; b2v = fmt_num(b[1][1]) if len(b) > 1 else "---"
         draw_row([lbl, b1n, b1v, b2n, b2v], col_x4,
                  [COLOR_TEXT, COLOR_SUBZONE, COLOR_TEXT, COLOR_SUBZONE, COLOR_TEXT_SEC], idx)
-    draw.line([30, y, width - 30, y], fill=COLOR_GRID_BORDER, width=2)
-    y += 80
+    draw.line([60, y, width - 60, y], fill=COLOR_GRID_BORDER, width=3)
+    y += 150
 
     # Footer
-    draw.text((50, y), f"Generated on {date.today().strftime('%d %b %Y')} | Collections MIS Report | Confidential",
+    draw.text((95, y), f"Generated on {date.today().strftime('%d %b %Y')} | Collections MIS Report | Confidential",
               fill=COLOR_TEXT_SEC, font=font_small)
 
     buf = io.BytesIO()
@@ -774,40 +809,42 @@ def build_html_report(today_m, yest_m, extra_t, extra_y, date_str, view_key):
 
     css = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Inter',sans-serif;background:#f0f4f8;color:#1a202c;padding:32px 24px}
-.report-wrapper{max-width:860px;margin:0 auto}
-.report-header{background:linear-gradient(135deg,#1a365d 0%,#2b6cb0 100%);border-radius:16px 16px 0 0;
-  padding:28px 36px 24px;color:#fff;display:flex;justify-content:space-between;align-items:flex-end}
-.report-header .title{font-size:20px;font-weight:700;letter-spacing:.5px}
-.report-header .subtitle{font-size:13px;opacity:.75;margin-top:4px}
-.report-header .badge{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);
-  border-radius:8px;padding:6px 14px;font-size:13px;font-weight:600;white-space:nowrap}
-.report-body{background:#fff;border-radius:0 0 16px 16px;padding:32px 36px 36px;
-  box-shadow:0 4px 24px rgba(0,0,0,.08)}
-.section{margin-bottom:36px}.section:last-child{margin-bottom:0}
-.section-footer-note{font-size:11px;color:#718096;margin-top:8px;padding-left:4px}
-.section-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
-.section-number{background:#2b6cb0;color:#fff;font-size:11px;font-weight:700;width:24px;height:24px;
-  border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.section-title{font-size:14px;font-weight:700;color:#1a365d;text-transform:uppercase;letter-spacing:.6px}
-table{width:100%;border-collapse:separate;border-spacing:0;border-radius:10px;overflow:hidden;
-  border:1px solid #e2e8f0;font-size:13px}
-thead tr{background:#ebf4ff}
-thead th{padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:#2b6cb0;
+body{font-family:'Inter',sans-serif;background:#f5f7fa;color:#0f2a5f;padding:36px 24px}
+.report-wrapper{max-width:880px;margin:0 auto}
+.report-header{background:linear-gradient(135deg,#0f2a5f 0%,#1a4d8f 50%,#2563c4 100%);
+  border-radius:18px 18px 0 0;padding:32px 40px 28px;color:#fff;display:flex;justify-content:space-between;
+  align-items:flex-end;box-shadow:0 8px 24px rgba(15,42,95,.15);border:1px solid rgba(255,255,255,.08)}
+.report-header .title{font-size:22px;font-weight:800;letter-spacing:.6px}
+.report-header .subtitle{font-size:13px;opacity:.85;margin-top:5px;letter-spacing:.3px}
+.report-header .badge{background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.4);
+  border-radius:10px;padding:8px 16px;font-size:13px;font-weight:700;backdrop-filter:blur(10px)}
+.report-body{background:#fff;border-radius:0 0 18px 18px;padding:36px 40px 40px;
+  box-shadow:0 4px 20px rgba(0,0,0,.07);border:1px solid #e8ecf1}
+.section{margin-bottom:40px}.section:last-child{margin-bottom:0}
+.section-footer-note{font-size:11px;color:#718096;margin-top:10px;padding-left:4px}
+.section-header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.section-number{background:linear-gradient(135deg,#0f2a5f 0%,#1a4d8f 100%);color:#fff;font-size:12px;
+  font-weight:800;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;flex-shrink:0}
+.section-title{font-size:15px;font-weight:800;color:#0f2a5f;text-transform:uppercase;letter-spacing:.6px}
+table{width:100%;border-collapse:separate;border-spacing:0;border-radius:12px;overflow:hidden;
+  border:1px solid #dce5f0;font-size:13px}
+thead tr{background:linear-gradient(90deg,#e8f1f9 0%,#f0f5fb 100%)}
+thead th{padding:12px 14px;text-align:center;font-size:11px;font-weight:800;color:#1a4d8f;
   text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid #bee3f8}
 thead th:first-child{text-align:left}
-tbody tr:nth-child(even){background:#f7fafc}
-tbody tr:hover{background:#ebf8ff}
-td{padding:10px 14px;border-bottom:1px solid #e2e8f0}
+tbody tr:nth-child(even){background:#f7fbff}
+tbody tr:hover{background:#e8f1f9}
+td{padding:12px 14px;border-bottom:1px solid #dce5f0}
 tbody tr:last-child td{border-bottom:none}
-td.label{font-weight:600;color:#2d3748;text-align:left;white-space:nowrap}
+td.label{font-weight:700;color:#0f2a5f;text-align:left;white-space:nowrap}
 td.val{text-align:center;color:#4a5568;font-variant-numeric:tabular-nums}
-td.today{font-weight:700;color:#1a365d}
-td.flow{color:#276749;font-weight:600}
-td.subzone{font-weight:600;color:#744210}
-.report-footer{text-align:center;margin-top:20px;font-size:11px;color:#a0aec0;letter-spacing:.3px}
+td.today{font-weight:800;color:#0f2a5f}
+td.flow{color:#276749;font-weight:700}
+td.subzone{font-weight:700;color:#7a3d0d}
+.report-footer{text-align:center;margin-top:24px;font-size:11px;color:#a0aec0;letter-spacing:.3px}
 </style>"""
 
     return f"""<!DOCTYPE html>
@@ -983,33 +1020,17 @@ if generate:
 
                     # ── Downloads ─────────────────────────────────────────
                     st.markdown("---")
-                    dl_col1, dl_col2 = st.columns(2, gap="medium")
 
                     safe_label = ZONE_CONFIG[view_key]['label'].replace(' ', '_')
 
-                    with dl_col1:
-                        png_buf = create_report_image(today_m, yest_m, extra_t, extra_y, report_date, view_key)
-                        st.download_button(
-                            label="📷  Download Report Image (PNG)",
-                            data=png_buf,
-                            file_name=f"Collections_{safe_label}_{report_date}.png",
-                            mime="image/png",
-                            use_container_width=True,
-                        )
-
-                    with dl_col2:
-                        html_str = build_html_report(today_m, yest_m, extra_t, extra_y, report_date, view_key)
-                        b64 = base64.b64encode(html_str.encode()).decode()
-                        st.markdown(
-                            f'<a href="data:text/html;base64,{b64}" '
-                            f'download="Collections_{safe_label}_{report_date}.html" '
-                            f'style="text-decoration:none;">'
-                            f'<button style="width:100%;padding:10px 0;background:linear-gradient(135deg,#276749,#38a169);'
-                            f'color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:15px;'
-                            f'font-weight:700;letter-spacing:.4px;box-shadow:0 4px 14px rgba(56,161,105,.35);">'
-                            f'🌐&nbsp; Download Report (HTML)</button></a>',
-                            unsafe_allow_html=True,
-                        )
+                    png_buf = create_report_image(today_m, yest_m, extra_t, extra_y, report_date, view_key)
+                    st.download_button(
+                        label="📷  Download Report Image (PNG) — Mobile Ready",
+                        data=png_buf,
+                        file_name=f"Collections_{safe_label}_{report_date}.png",
+                        mime="image/png",
+                        use_container_width=True,
+                    )
 
             except Exception as e:
                 st.error(f"Error: {e}")
@@ -1024,8 +1045,7 @@ with st.expander("ℹ️  How to use this tool"):
 | 2 | Upload the matching **Yesterday's** files on the right |
 | 3 | Choose **PAN INDIA** for the overall view, or pick a specific **Sub-Region** |
 | 4 | Enter the report date and click **Generate Report** |
-| 5 | Download as **PNG** (for sharing/WhatsApp) or **HTML** (for email/printing) |
+| 5 | Download the **PNG** image (optimized for mobile & WhatsApp) |
 
 > Stage 2 and Stage 3 files are optional but recommended — without them Section 2 (Norm / RB / RF Metrics) will show `---`.
 """)
-
