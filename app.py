@@ -178,7 +178,7 @@ COL_FR_FLOW   = 2;  COL_FR_EFF  = 3;  COL_FR_LMTD  = 6
 COL_129_FLOW  = 9;  COL_129_EFF = 11; COL_129_LMTD = 14
 COL_NORM_EFF  = 21; COL_NORM_LMTD = 24
 COL_3059_FLOW = 29; COL_3059_EFF = 31; COL_3059_LMTD = 34
-COL_S3_FLOW   = 40; COL_S3_EFF  = 42; COL_S3_LMTD   = 45
+COL_S3_FLOW   = 41; COL_S3_EFF  = 43; COL_S3_LMTD   = 46
 
 # ── Zone configuration: parent key → list of sub-region keys for bottom ranking
 ZONE_CONFIG = {
